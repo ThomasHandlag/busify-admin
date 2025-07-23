@@ -1,17 +1,17 @@
 import { useEffect, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { useAuth } from "../hooks";
+import { useAuthStore } from "../../stores/authStore";
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
-  const auth = useAuth();
+  const auth = useAuthStore();
   useEffect(() => {
-    if (auth.isAuthenticated) {
+    if (auth.loggedInUser) {
       navigate("dashboard");
     } else {
       navigate("login");
     }
-  });
+  }, [auth.loggedInUser, navigate]);
   return <div className="max-w-full h-screen">{children}</div>;
 };
 

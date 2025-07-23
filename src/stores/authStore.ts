@@ -1,90 +1,100 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import type { NavigateFunction } from "react-router";
+import { create } from "zustand";
+import { persist, devtools } from "zustand/middleware";
+import { login } from "../app/api/auth";
 
-interface AuthState {
+export interface LoggedInUser {
   role: string[];
-  accessToken: string;
-  refreshToken: string;
   userId: number;
   userName: string;
   userMail: string;
-  isAuthenticated: boolean;
 }
 
-interface AuthActions {
-  login: (authData: Omit<AuthState, 'isAuthenticated'>) => void;
-  logout: () => void;
-  updateUser: (userData: Partial<Pick<AuthState, 'userName' | 'userMail' | 'role'>>) => void;
+export interface AuthState {
+  loggedInUser?: LoggedInUser;
+  accessToken: string;
+  refreshToken: string;
+  loading: boolean;
+  error: string | null;
+  login: ({
+    username,
+    password,
+    navigate,
+  }: {
+    username: string;
+    password: string;
+    navigate: NavigateFunction;
+  }) => Promise<void>;
+  logOut: () => Promise<void>;
 }
 
-type AuthStore = AuthState & AuthActions;
+export const useAuthStore = create<AuthState>()(
+  devtools(
+    persist(
+      (set) => {
+        return {
+          accessToken: "",
+          refreshToken: "",
+          loggedInUser: undefined,
+          loading: false,
+          error: null,
+          login: async ({ username, password, navigate }) => {
+            try {
+              set(
+                {
+                  loggedInUser: undefined,
+                  accessToken: "",
+                  refreshToken: "",
+                },
+                false,
+                { type: "@AUTH/LOGIN/LOADING" }
+              );
 
-const initialState: AuthState = {
-  role: [],
-  accessToken: "",
-  refreshToken: "",
-  userId: 0,
-  userName: "",
-  userMail: "",
-  isAuthenticated: false,
-};
+              const response = await login({
+                username,
+                password,
+              });
 
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      ...initialState,
-      
-      login: (authData) => {
-        set({
-          ...authData,
-          isAuthenticated: true,
-        });
+              set(
+                {
+                  accessToken: response?.accessToken,
+                  refreshToken: response?.refreshToken,
+                  loggedInUser: response?.loggedInUser as LoggedInUser,
+                  loading: false,
+                  error: null,
+                },
+                false,
+                { type: "@AUTH/LOGIN/SUCCESS" }
+              );
+              navigate("/dashboard");
+            } catch (error) {
+              set(
+                {
+                  error: error instanceof Error ? error.message : "Login failed",
+                  accessToken: "",
+                  refreshToken: "",
+                  loggedInUser: undefined,
+                },
+                false,
+                {
+                  type: "@AUTH/LOGIN/ERROR",
+                }
+              );
+            }
+          },
+
+          logOut: async () => {
+            set({
+              accessToken: "",
+              refreshToken: "",
+              loggedInUser: undefined,
+            });
+          },
+        };
       },
-      
-      logout: () => {
-        set({
-          ...initialState,
-          isAuthenticated: false,
-        });
-      },
-      
-      updateUser: (userData) => {
-        set((state) => ({
-          ...state,
-          ...userData,
-        }));
-      },
-    }),
-    {
-      name: 'access-storage', // name of the item in localStorage (same as before)
-      storage: createJSONStorage(() => localStorage),
-      // Only persist the auth state, not the actions
-      partialize: (state) => ({
-        role: state.role,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
-        userId: state.userId,
-        userName: state.userName,
-        userMail: state.userMail,
-        isAuthenticated: state.isAuthenticated,
-      }),
-    }
+      {
+        name: "auth-storage",
+      }
+    )
   )
 );
-
-// Selectors for easy access
-export const useAuth = () => useAuthStore((state) => ({
-  role: state.role,
-  accessToken: state.accessToken,
-  refreshToken: state.refreshToken,
-  userId: state.userId,
-  userName: state.userName,
-  userMail: state.userMail,
-  isAuthenticated: state.isAuthenticated,
-}));
-
-export const useAuthActions = () => useAuthStore((state) => ({
-  login: state.login,
-  logout: state.logout,
-  updateUser: state.updateUser,
-}));

@@ -1,11 +1,24 @@
+import type { LoggedInUser } from "../../stores/authStore";
 import apiClient from "./index";
 
 export const login = async (credentials: {
   username: string;
   password: string;
-}) => {
-  const response = await apiClient.post("/auth/login", credentials);
-  return response.data;
+}): Promise<
+  | { accessToken: string; refreshToken: string; loggedInUser: LoggedInUser }
+  | undefined
+> => {
+  try {
+    const response = await apiClient.post("/auth/login", credentials);
+    return response.data as {
+      accessToken: string;
+      refreshToken: string;
+      loggedInUser: LoggedInUser;
+    };
+  } catch (error) {
+    console.error("Login failed:", error);
+    return undefined;
+  }
 };
 
 export const signup = async (userData: {

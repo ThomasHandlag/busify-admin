@@ -1,66 +1,65 @@
-import Rive from "@rive-app/react-canvas";
 import { Form, Button, Input } from "antd";
-import { useAuth, useAuthActions } from "../../app/hooks";
-import { useEffect } from "react";
+import { useAuthStore } from "../../stores/authStore";
+import { useNavigate } from "react-router";
+import { useState } from "react";
 
 const LoginPage = () => {
-  const auth = useAuth(); // This will automatically load from localStorage!
-  const { login } = useAuthActions();
+  const auth = useAuthStore();
 
-  // Example: Check if already authenticated
-  useEffect(() => {
-    if (auth.isAuthenticated) {
-      console.log("User is already logged in:", auth.userName);
-      // Could redirect to dashboard here
-    }
-  }, [auth.isAuthenticated, auth.userName]);
+  const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = (values: { username: string; password: string }) => {
-    // Simulate login API call
-    const mockAuthData = {
-      role: ["admin"],
-      accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token", 
-      userId: 1,
-      userName: values.username,
-      userMail: `${values.username}@example.com`,
-    };
-    
-    login(mockAuthData);
+    setLoading(true);
+    auth.login({
+      username: values.username,
+      password: values.password,
+      navigate,
+    });
+    setLoading(false);
   };
 
   return (
-    <div className="flex">
-      <div className="mt-4">
-        <p>Welcome to the Busify Admin Panel</p>
-        {auth.isAuthenticated && (
-          <p>Welcome back, {auth.userName}!</p>
-        )}
-        <Rive
-          src="/rive/busify-logo.riv"
-          stateMachines="busify"
-        />
-      </div>
-      <div>
+    <div className="flex flex-col items-center justify-center h-screen w-full">
+      <div className="w-96 mt-4 bg-white p-6 rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold">Login to Busify</h1>
         <Form onFinish={handleLogin}>
-          <Form.Item 
-            label="Username" 
+          <Form.Item
+            label="Username"
+            labelCol={{ span: 24 }}
             name="username"
-            rules={[{ required: true, message: 'Please input your username!' }]}
+            rules={[{ required: true, message: "Please input your username!" }]}
           >
             <Input placeholder="Enter your username" />
           </Form.Item>
-          <Form.Item 
-            label="Password" 
+          <Form.Item
+            label="Password"
+            labelCol={{ span: 24 }}
             name="password"
-            rules={[{ required: true, message: 'Please input your password!' }]}
+            rules={[{ required: true, message: "Please input your password!" }]}
           >
             <Input.Password placeholder="Enter your password" />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit">
-              Login
-            </Button>
+            <div className="flex justify-between">
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                disabled={loading}
+              >
+                Login
+              </Button>
+              <Button
+                className="underline"
+                type="link"
+                onClick={() => navigate("/reset-password")}
+                disabled={loading}
+              >
+                Reset password
+              </Button>
+            </div>
           </Form.Item>
         </Form>
       </div>
