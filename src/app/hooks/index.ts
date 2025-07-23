@@ -17,3 +17,6 @@ export const useGNotify = () => {
     return context;
 };
 
+// Re-export auth hooks from the store for convenience
+export { useAuth, useAuthActions } from '../../stores/authStore';
+
