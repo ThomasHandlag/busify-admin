@@ -13,7 +13,7 @@ Busify Admin Dashboard is the administrative interface of the Busify ecosystem, 
 ## ✨ Features
 
 - **Modern Tech Stack**: Built with React 19, TypeScript, and Vite for optimal performance
-- **State Management**: Redux Toolkit and Recoil for efficient state management
+- **State Management**: Zustand and Recoil for efficient state management
 - **UI Framework**: Ant Design v5 for professional and consistent UI components
 - **Styling**: Tailwind CSS for rapid and responsive design
 - **API Integration**: Axios for seamless backend communication
@@ -29,7 +29,7 @@ Busify Admin Dashboard is the administrative interface of the Busify ecosystem, 
 - **UI Library**: Ant Design v5
 - **Styling**: Tailwind CSS v4
 - **State Management**: 
-  - Redux Toolkit for global state
+  - Zustand Toolkit for global state
   - Recoil for component-level state
 - **Routing**: React Router v7
 - **HTTP Client**: Axios
