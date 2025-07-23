@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
-    "@reduxjs/toolkit": "^2.8.2",
+    "@rive-app/react-canvas": "^4.22.1",
     "@tailwindcss/vite": "^4.1.11",
     "antd": "^5.26.6",
     "axios": "^1.10.0",
@@ -20,7 +20,8 @@
     "react-redux": "^9.2.0",
     "react-router": "^7.7.0",
     "recoil": "^0.7.7",
-    "tailwindcss": "^4.1.11"
+    "tailwindcss": "^4.1.11",
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

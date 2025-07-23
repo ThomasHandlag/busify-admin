@@ -97,18 +97,15 @@ busify-admin/
 ├── src/
 │   ├── app/
 │   │   ├── hooks/        # Custom React hooks
-│   │   └── store.ts      # Redux store configuration
+│   │   └── api/          # api definitions
 │   ├── assets/           # Static assets (images, icons, etc.)
 │   ├── components/       # Reusable UI components
 │   ├── features/         # Feature-based modules
-│   │   ├── auth/         # Authentication feature
-│   │   │   ├── authAPI.ts      # API calls
-│   │   │   └── authSlice.ts    # Redux slice
+│   │   ├── login/         # Authentication feature
+│   │   │   ├──login.tsx  # Login UI
 │   │   └── users/        # User management feature
-│   │       ├── usersAPI.ts     # API calls
-│   │       └── usersSlice.ts   # Redux slice
+│   │       ├── users.tsx # Users management UI
 │   ├── routes/           # Route definitions and components
-│   ├── api-client.ts     # Axios configuration
 │   ├── App.tsx           # Main application component
 │   └── main.tsx          # Application entry point
 ├── public/               # Public static files
@@ -132,11 +129,11 @@ busify-admin/
 #### Feature-Based Organization
 Each feature is organized with its own:
 - **API Layer**: HTTP requests and API integration
-- **State Management**: Redux slices for global state
+- **State Management**: Zustand for global state
 - **UI Components**: Feature-specific components
 
 #### State Management Strategy
-- **Redux Toolkit**: For global application state (auth, users, etc.)
+- **Zustand**: For global application state (auth, users, etc.)
 - **Recoil**: For component-level and local state management
 - **React Hooks**: For component logic and side effects
 
@@ -287,8 +284,7 @@ To learn more about the technologies used in this project:
 - [TypeScript Documentation](https://www.typescriptlang.org/docs/) - Learn about TypeScript
 - [Vite Documentation](https://vitejs.dev/guide/) - Learn about Vite build tool
 - [Ant Design Documentation](https://ant.design/docs/react/introduce) - Learn about Ant Design components
-- [Redux Toolkit Documentation](https://redux-toolkit.js.org/) - Learn about modern Redux
-- [Recoil Documentation](https://recoiljs.org/) - Learn about Recoil state management
+- [Zustand Documentation](https://zustand.docs.pmnd.rs/getting-started/introduction) - Learn about Zustand
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs) - Learn about utility-first CSS
 - [React Router Documentation](https://reactrouter.com/) - Learn about client-side routing
 
