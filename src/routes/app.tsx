@@ -1,21 +1,24 @@
 import { createBrowserRouter } from "react-router";
 import App from "../App";
-import LoginPage from "../features/login/login";
-import Dashboard from "../features/dashboard/dashboard";
+import LoginPage from "../features/auth/login";
+
+import { AuthRoute } from "./auth";
+import NotFoundPage from "../components/NotFoundPage";
 
 export const AppRoute = createBrowserRouter([
   {
     path: "/",
     element: <App />,
     children: [
-      {
-        path: "dashboard",
-        element: <Dashboard />,
-      },
+      AuthRoute,
       {
         path: "login",
         element: <LoginPage />,
+      },
+      {
+        path: "*",
+        element: <NotFoundPage />,
       }
-    ]
+    ],
   },
 ]);

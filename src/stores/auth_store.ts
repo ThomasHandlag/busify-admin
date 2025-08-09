@@ -4,10 +4,9 @@ import { persist, devtools } from "zustand/middleware";
 import { login } from "../app/api/auth";
 
 export interface LoggedInUser {
-  role: string[];
+  role: string;
   userId: number;
-  userName: string;
-  userMail: string;
+  email: string;
 }
 
 export interface AuthState {
@@ -68,9 +67,11 @@ export const useAuthStore = create<AuthState>()(
               );
               navigate("/dashboard");
             } catch (error) {
+              console.error("Login error:", error);
               set(
                 {
-                  error: error instanceof Error ? error.message : "Login failed",
+                  error:
+                    error instanceof Error ? error.message : "Login failed",
                   accessToken: "",
                   refreshToken: "",
                   loggedInUser: undefined,

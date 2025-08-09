@@ -1,4 +1,4 @@
-import type { LoggedInUser } from "../../stores/authStore";
+import type { LoggedInUser } from "../../stores/auth_store";
 import apiClient from "./index";
 
 export const login = async (credentials: {
@@ -8,17 +8,18 @@ export const login = async (credentials: {
   | { accessToken: string; refreshToken: string; loggedInUser: LoggedInUser }
   | undefined
 > => {
-  try {
-    const response = await apiClient.post("/auth/login", credentials);
-    return response.data as {
-      accessToken: string;
-      refreshToken: string;
-      loggedInUser: LoggedInUser;
-    };
-  } catch (error) {
-    console.error("Login failed:", error);
-    return undefined;
-  }
+  const response = await apiClient.post("api/auth/login", credentials);
+  console.log("Login response:", response);
+  const result = response.data.result;
+  return {
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    loggedInUser: {
+      userId: result.userId,
+      email: result.email,
+      role: result.role,
+    },
+  };
 };
 
 export const signup = async (userData: {

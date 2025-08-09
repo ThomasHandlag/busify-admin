@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { useAuthStore } from "../../stores/authStore";
+import { useAuthStore } from "../../stores/auth_store";
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
