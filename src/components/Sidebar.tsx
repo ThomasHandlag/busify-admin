@@ -10,7 +10,8 @@ import {
   BranchesOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const { Sider } = Layout;
 const { Text } = Typography;
@@ -21,6 +22,20 @@ interface SidebarProps {
 
 const Sidebar = ({ collapsed = false }: SidebarProps) => {
   const [selectedKey, setSelectedKey] = useState("dashboard");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Map route paths to menu keys
+  const routeToKeyMap: Record<string, string> = {
+    "/admin": "dashboard",
+    "/admin/users-management": "users",
+  };
+
+  // Update selected key based on current location
+  useEffect(() => {
+    const currentKey = routeToKeyMap[location.pathname] || "dashboard";
+    setSelectedKey(currentKey);
+  }, [location.pathname]);
 
   const menuItems: MenuProps["items"] = [
     {
@@ -32,27 +47,9 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
       type: "divider",
     },
     {
-      key: "user-management",
+      key: "users",
       icon: <UserOutlined />,
       label: "Quản lý Người dùng",
-      children: [
-        {
-          key: "add-user",
-          label: "Thêm người dùng",
-        },
-        {
-          key: "edit-user",
-          label: "Sửa người dùng",
-        },
-        {
-          key: "search-user",
-          label: "Tìm kiếm người dùng",
-        },
-        {
-          key: "delete-user",
-          label: "Xóa người dùng",
-        },
-      ],
     },
     {
       key: "vehicle-management",
@@ -169,8 +166,20 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedKey(key);
-    // Handle navigation logic here
-    console.log("Navigate to:", key);
+
+    // Navigation logic based on menu key
+    switch (key) {
+      case "dashboard":
+        navigate("/admin");
+        break;
+      case "users":
+        navigate("/admin/users-management");
+        break;
+      // Add more cases for other menu items as needed
+      default:
+        console.log("Navigate to:", key);
+        break;
+    }
   };
 
   return (

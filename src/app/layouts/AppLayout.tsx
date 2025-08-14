@@ -7,7 +7,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const auth = useAuthStore();
   useEffect(() => {
     if (auth.loggedInUser) {
-      navigate("dashboard");
+      navigate(window.location.pathname);
     } else {
       navigate("login");
     }
