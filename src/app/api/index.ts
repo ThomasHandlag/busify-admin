@@ -1,7 +1,13 @@
 import axios from "axios";
 
+export interface ApiResponse<T = unknown> {
+  code: number;
+  message: string;
+  result: T;
+}
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.SECRET_API || "http://localhost:8080/",
 });
 
 apiClient.interceptors.request.use(

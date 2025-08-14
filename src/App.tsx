@@ -9,10 +9,10 @@ function App() {
 
   return (
     <GNotifyContext.Provider value={{ notify: api }}>
-      <AppLayout>
+       <AppLayout>
         <Outlet />
       </AppLayout>
-      {contextHolder}
+      {contextHolder} 
     </GNotifyContext.Provider>
   );
 }
