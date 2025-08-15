@@ -11,7 +11,7 @@ import {
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router";
 
 const { Sider } = Layout;
 const { Text } = Typography;
