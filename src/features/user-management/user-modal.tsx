@@ -174,6 +174,10 @@ const UserModal = ({
               label="Số điện thoại"
               rules={[
                 { required: true, message: "Vui lòng nhập số điện thoại!" },
+                {
+                  pattern: /^(0|\\+84)[0-9]{9}$/,
+                  message: "Số điện thoại phải có 10 hoặc 11 chữ số!",
+                },
               ]}
             >
               <Input placeholder="Nhập số điện thoại" />
@@ -209,7 +213,13 @@ const UserModal = ({
         <Form.Item
           name="address"
           label="Địa chỉ"
-          rules={[{ required: true, message: "Vui lòng nhập địa chỉ!" }]}
+          rules={[
+            { required: true, message: "Vui lòng nhập địa chỉ!" },
+            {
+              max: 255,
+              message: "Địa chỉ không được vượt quá 255 ký tự!",
+            },
+          ]}
         >
           <Input.TextArea rows={3} placeholder="Nhập địa chỉ đầy đủ" />
         </Form.Item>
