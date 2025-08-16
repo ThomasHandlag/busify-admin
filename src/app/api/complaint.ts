@@ -39,7 +39,7 @@ export interface ComplaintDetail {
     operatorName: string;
     busLicensePlate: string;
   };
-  assignedAgent: any;
+  assignedAgent: unknown;
 }
 
 export interface ComplaintResponse {
