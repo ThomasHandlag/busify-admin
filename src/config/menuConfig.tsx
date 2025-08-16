@@ -61,6 +61,11 @@ export const menuItems: AppMenuItem[] = [
         roles: ["CUSTOMER_SERVICE"],
       },
       {
+        key: "bookings-customer-service",
+        label: "Quản lý booking",
+        roles: ["CUSTOMER_SERVICE"],
+      },
+      {
         key: "trips-customer-service",
         label: "Tra cứu chuyến đi",
         roles: ["CUSTOMER_SERVICE"],
@@ -161,6 +166,7 @@ export const routeToKeyMap: Record<string, string> = {
   "/admin/users-management": "users",
   "/customer-service": "dashboard-customer-service",
   "/customer-service/tickets": "tickets-customer-service",
+  "/customer-service/bookings": "bookings-customer-service",
   "/customer-service/trips": "trips-customer-service",
   "/customer-service/complaints": "complaints-customer-service",
   "/customer-service/reviews": "reviews-customer-service",

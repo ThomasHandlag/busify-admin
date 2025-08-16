@@ -9,6 +9,7 @@ import TicketWithCustomerServicePage from "../features/ticket-management/pages/T
 import TripWithCustomerServicePage from "../features/trip-management/TripWithCustomerService";
 import ComplaintsWithCustomerServicePage from "../features/complaints-management/pages/ComplaintsWithCustomerServicePage";
 import ReviewsWithCustomerServicePage from "../features/reviews-management/pages/ReviewsWithCustomerServicePage";
+import BookingsWithCustomerService from "../features/bookings-mangement/pages/BookingsWithCustomerService";
 
 export function withRole(element: React.ReactNode, roles: string[]) {
   return <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
@@ -38,6 +39,10 @@ export const CustomerServiceRoute: RouteObject = {
     {
       path: "reviews",
       element: <ReviewsWithCustomerServicePage />,
+    },
+    {
+      path: "bookings",
+      element: <BookingsWithCustomerService />,
     },
   ],
 };
