@@ -1,4 +1,4 @@
-export default function ComplaintsPage() {
+export default function ComplaintsWithCustomerServicePage() {
   return (
     <div>
       <h1>Quản lý khiếu nại</h1>

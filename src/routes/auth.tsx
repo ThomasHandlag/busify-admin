@@ -5,10 +5,10 @@ import UserManagement from "../features/user-management/user";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 // Customer Service pages
-import TicketManagementPage from "../features/ticket-management/pages/TicketManagementPage";
-import ReviewsPage from "../features/reviews-management/pages/ReviewsPage";
-import ComplaintsPage from "../features/complaints-management/pages/ComplaintsPage";
-import TripSearchPage from "../features/trip-management/TripSearchPage";
+import TicketManagementPage from "../features/ticket-management/pages/TicketWithCustomerServicePage";
+import ReviewsPage from "../features/reviews-management/pages/ReviewsWithCustomerServicePage";
+import ComplaintsPage from "../features/complaints-management/pages/ComplaintsWithCustomerServicePage";
+import TripSearchPage from "../features/trip-management/TripWithCustomerService";
 
 export function withRole(element: React.ReactNode, roles: string[]) {
   return <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
