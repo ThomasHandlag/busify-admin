@@ -5,10 +5,10 @@ import UserManagement from "../features/user-management/user";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 // Customer Service pages
-import TicketManagementPage from "../features/ticket-management/pages/TicketWithCustomerServicePage";
-import ReviewsPage from "../features/reviews-management/pages/ReviewsWithCustomerServicePage";
-import ComplaintsPage from "../features/complaints-management/pages/ComplaintsWithCustomerServicePage";
-import TripSearchPage from "../features/trip-management/TripWithCustomerService";
+import TicketWithCustomerServicePage from "../features/ticket-management/pages/TicketWithCustomerServicePage";
+import TripWithCustomerServicePage from "../features/trip-management/TripWithCustomerService";
+import ComplaintsWithCustomerServicePage from "../features/complaints-management/pages/ComplaintsWithCustomerServicePage";
+import ReviewsWithCustomerServicePage from "../features/reviews-management/pages/ReviewsWithCustomerServicePage";
 
 export function withRole(element: React.ReactNode, roles: string[]) {
   return <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
@@ -25,19 +25,19 @@ export const CustomerServiceRoute: RouteObject = {
     },
     {
       path: "tickets",
-      element: <TicketManagementPage />,
+      element: <TicketWithCustomerServicePage />,
     },
     {
       path: "trips",
-      element: <TripSearchPage />,
+      element: <TripWithCustomerServicePage />,
     },
     {
       path: "complaints",
-      element: <ComplaintsPage />,
+      element: <ComplaintsWithCustomerServicePage />,
     },
     {
       path: "reviews",
-      element: <ReviewsPage />,
+      element: <ReviewsWithCustomerServicePage />,
     },
   ],
 };

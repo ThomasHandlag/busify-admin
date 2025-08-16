@@ -1,4 +1,4 @@
-export default function ReviewsPage() {
+export default function ReviewsWithCustomerServicePage() {
   return (
     <div>
       <h1>Quản lý đánh giá</h1>

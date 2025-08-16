@@ -1,4 +1,4 @@
-export default function TripSearchPage() {
+export default function TripWithCustomerServicePage() {
   return (
     <div>
       <h1>Tìm kiếm chuyến đi</h1>
