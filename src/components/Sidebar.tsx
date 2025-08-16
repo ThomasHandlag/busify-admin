@@ -12,6 +12,7 @@ import {
 import type { MenuProps } from "antd";
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
+import { useAuthStore } from "../stores/auth_store";
 
 const { Sider } = Layout;
 const { Text } = Typography;
@@ -20,10 +21,22 @@ interface SidebarProps {
   collapsed?: boolean;
 }
 
+interface AppMenuItem {
+  key?: string;
+  icon?: React.ReactNode;
+  label?: string;
+  roles?: string[];
+  type?: "divider";
+  children?: AppMenuItem[];
+}
+
+type MenuItem = Required<MenuProps>["items"][number];
+
 const Sidebar = ({ collapsed = false }: SidebarProps) => {
   const [selectedKey, setSelectedKey] = useState("dashboard");
   const navigate = useNavigate();
   const location = useLocation();
+  const user = useAuthStore((state) => state.loggedInUser);
 
   // Map route paths to menu keys
   const routeToKeyMap: Record<string, string> = {
@@ -37,11 +50,12 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
     setSelectedKey(currentKey);
   }, [location.pathname]);
 
-  const menuItems: MenuProps["items"] = [
+  const menuItems: AppMenuItem[] = [
     {
       key: "dashboard",
       icon: <DashboardOutlined />,
       label: "Bảng điều khiển",
+      roles: ["ADMIN", "EMPLOYEE"],
     },
     {
       type: "divider",
@@ -50,69 +64,39 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
       key: "users",
       icon: <UserOutlined />,
       label: "Quản lý Người dùng",
+      roles: ["ADMIN"],
     },
     {
       key: "vehicle-management",
       icon: <TruckOutlined />,
       label: "Quản lý Nhà xe",
-      children: [
-        {
-          key: "add-vehicle",
-          label: "Thêm nhà xe",
-        },
-        {
-          key: "edit-vehicle",
-          label: "Sửa nhà xe",
-        },
-        {
-          key: "search-vehicle",
-          label: "Tìm kiếm nhà xe",
-        },
-        {
-          key: "delete-vehicle",
-          label: "Xóa nhà xe",
-        },
-      ],
+      roles: ["ADMIN"],
     },
     {
       key: "route-management",
       icon: <BranchesOutlined />,
       label: "Quản lý Tuyến xe",
-      children: [
-        {
-          key: "add-route",
-          label: "Thêm tuyến xe",
-        },
-        {
-          key: "edit-route",
-          label: "Sửa tuyến xe",
-        },
-        {
-          key: "search-route",
-          label: "Tìm kiếm tuyến xe",
-        },
-        {
-          key: "delete-route",
-          label: "Xóa tuyến xe",
-        },
-      ],
     },
     {
       key: "revenue-management",
       icon: <DollarCircleOutlined />,
       label: "Theo dõi Doanh thu",
+      roles: ["ADMIN"],
       children: [
         {
           key: "revenue-reports",
           label: "Báo cáo doanh thu",
+          roles: ["ADMIN"],
         },
         {
           key: "revenue-analytics",
           label: "Phân tích doanh thu",
+          roles: ["ADMIN"],
         },
         {
           key: "revenue-export",
           label: "Xuất báo cáo",
+          roles: ["ADMIN"],
         },
       ],
     },
@@ -120,10 +104,12 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
       key: "role-management",
       icon: <SafetyCertificateOutlined />,
       label: "Phân quyền Vai trò",
+      roles: ["ADMIN"],
       children: [
         {
           key: "assign-roles",
           label: "Phân quyền",
+          roles: ["ADMIN"],
         },
         {
           key: "manage-roles",
@@ -138,6 +124,7 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
     {
       key: "log-management",
       icon: <FileTextOutlined />,
+      roles: ["EMPLOYEE"],
       label: "Quản lý Logs",
       children: [
         {
@@ -164,6 +151,39 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
     },
   ];
 
+  const getFilteredMenuItems = (): MenuItem[] => {
+    return menuItems
+      .filter(
+        (item) => item.roles?.includes(user?.role as string) || !item.roles
+      )
+      .map((item): MenuItem => {
+        if (item.type === "divider") {
+          return { type: "divider" };
+        }
+        if (item.children) {
+          return {
+            key: item.key!,
+            icon: item.icon,
+            label: item.label,
+            children: item.children
+              .filter(
+                (child) =>
+                  child.roles?.includes(user?.role as string) || !child.roles
+              )
+              .map((child) => ({
+                key: child.key!,
+                icon: child.icon,
+                label: child.label,
+              })),
+          };
+        }
+        return {
+          key: item.key!,
+          icon: item.icon,
+          label: item.label,
+        };
+      });
+  };
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedKey(key);
 
@@ -249,7 +269,7 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
           borderRight: 0,
           paddingTop: "8px",
         }}
-        items={menuItems}
+        items={getFilteredMenuItems()}
         theme="light"
       />
     </Sider>
