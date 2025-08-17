@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from "react";
 import {
   Modal,
@@ -26,7 +25,6 @@ import {
   MailOutlined,
   EditOutlined,
   SaveOutlined,
-  CloseOutlined,
   CreditCardOutlined,
   HomeOutlined,
 } from "@ant-design/icons";

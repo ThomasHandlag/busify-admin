@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+// /* eslint-disable @typescript-eslint/no-unused-vars */
 import apiClient from ".";
 
 export interface Trip {
@@ -40,10 +40,10 @@ export interface TripFilterParams {
 
 export const getAllTrips = async (): Promise<TripResponse> => {
   try {
-    const response = await apiClient.get("/trips");
+    const response = await apiClient.get("api/trips");
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lấy danh sách chuyến đi");
+    throw new Error("Không thể lấy danh sách chuyến đi" + error);
   }
 };
 
@@ -51,10 +51,10 @@ export const filterTrips = async (
   params: TripFilterParams
 ): Promise<TripResponse> => {
   try {
-    const response = await apiClient.post("/trips/filter", params);
+    const response = await apiClient.post("api/trips/filter", params);
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lọc chuyến đi");
+    throw new Error("Không thể lọc chuyến đi" + error);
   }
 };
 
@@ -62,9 +62,9 @@ export const getTripById = async (
   tripId: number
 ): Promise<{ code: number; message: string; result: Trip }> => {
   try {
-    const response = await apiClient.get(`/trips/${tripId}`);
+    const response = await apiClient.get(`api/trips/${tripId}`);
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lấy thông tin chuyến đi");
+    throw new Error("Không thể lấy thông tin chuyến đi" + error);
   }
 };

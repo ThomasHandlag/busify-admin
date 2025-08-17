@@ -15,7 +15,6 @@ import {
   Card,
   Row,
   Col,
-  Divider,
   Avatar,
 } from "antd";
 import {

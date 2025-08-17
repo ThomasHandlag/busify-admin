@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Form,
@@ -29,84 +29,46 @@ import {
 } from "@ant-design/icons";
 import type { TableProps } from "antd";
 import TicketDetailModal from "../components/TicketDetailModal";
+import {
+  getAllTickets,
+  searchTickets,
+  type Ticket,
+  type TicketSearchParams,
+} from "../../../app/api/ticket";
 
 const { Title, Text } = Typography;
 
-// Mock data based on API response
-const mockTickets = [
-  {
-    ticketId: 1,
-    passengerName: "Trần Thị Khách",
-    passengerPhone: "0987654321",
-    price: 500000.0,
-    seatNumber: "B01",
-    status: "valid",
-    ticketCode: "TICKET123",
-    bookingId: 1,
-  },
-  {
-    ticketId: 2,
-    passengerName: "Lê Văn Khách",
-    passengerPhone: "0976543210",
-    price: 150000.0,
-    seatNumber: "A05",
-    status: "valid",
-    ticketCode: "TICKET124",
-    bookingId: 2,
-  },
-  {
-    ticketId: 3,
-    passengerName: "Phạm Thị Hành Khách",
-    passengerPhone: "0965432109",
-    price: 250000.0,
-    seatNumber: "B05",
-    status: "cancelled",
-    ticketCode: "TICKET125",
-    bookingId: 3,
-  },
-  {
-    ticketId: 4,
-    passengerName: "Hoàng Văn Khách",
-    passengerPhone: "0954321098",
-    price: 200000.0,
-    seatNumber: "B10",
-    status: "used",
-    ticketCode: "TICKET126",
-    bookingId: 4,
-  },
-  {
-    ticketId: 5,
-    passengerName: "Lê Văn Khách",
-    passengerPhone: "0976543210",
-    price: 220000.0,
-    seatNumber: "A17",
-    status: "valid",
-    ticketCode: "TICKET127",
-    bookingId: 5,
-  },
-];
-
-interface Ticket {
-  ticketId: number;
-  passengerName: string;
-  passengerPhone: string;
-  price: number;
-  seatNumber: string;
-  status: string;
-  ticketCode: string;
-  bookingId: number;
-}
-
 const TicketWithCustomerServicePage: React.FC = () => {
   const [form] = Form.useForm();
-  const [searchResults, setSearchResults] = useState<Ticket[]>(mockTickets); // Initialize with mock data
+  const [searchResults, setSearchResults] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleSearch = async (values: any) => {
+  // Load all tickets on component mount
+  useEffect(() => {
+    const loadAllTickets = async () => {
+      setLoading(true);
+      try {
+        const response = await getAllTickets();
+        if (response.result && response.result.length > 0) {
+          // Extract tickets from the result array
+          const tickets = response.result.flatMap((item) => item.tickets);
+          setSearchResults(tickets);
+        }
+      } catch (error) {
+        message.error("Không thể tải danh sách vé");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAllTickets();
+  }, []);
+
+  const handleSearch = async (values: TicketSearchParams) => {
     const { ticketCode, name, phone } = values;
 
     if (!ticketCode && !name && !phone) {
@@ -117,41 +79,45 @@ const TicketWithCustomerServicePage: React.FC = () => {
     setLoading(true);
     setHasSearched(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      let results = mockTickets;
-
-      if (ticketCode) {
-        results = results.filter((ticket) =>
-          ticket.ticketCode.toLowerCase().includes(ticketCode.toLowerCase())
-        );
-      }
-      if (name) {
-        results = results.filter((ticket) =>
-          ticket.passengerName.toLowerCase().includes(name.toLowerCase())
-        );
-      }
-      if (phone) {
-        results = results.filter((ticket) =>
-          ticket.passengerPhone.includes(phone)
-        );
-      }
-
-      setSearchResults(results);
-      setLoading(false);
-
-      if (results.length === 0) {
-        message.info("Không tìm thấy thông tin vé phù hợp");
+    try {
+      const response = await searchTickets(values);
+      if (response.result && response.result.length > 0) {
+        // Extract tickets from the result array
+        const tickets = response.result.flatMap((item) => item.tickets);
+        setSearchResults(tickets);
+        message.success(`Tìm thấy ${tickets.length} kết quả`);
       } else {
-        message.success(`Tìm thấy ${results.length} kết quả`);
+        setSearchResults([]);
+        message.info("Không tìm thấy thông tin vé phù hợp");
       }
-    }, 1000);
+    } catch (error) {
+      message.error("Lỗi khi tìm kiếm vé");
+      console.error(error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     form.resetFields();
-    setSearchResults(mockTickets); // Reset to show all mock data
     setHasSearched(false);
+    setLoading(true);
+
+    try {
+      const response = await getAllTickets();
+      if (response.result && response.result.length > 0) {
+        const tickets = response.result.flatMap((item) => item.tickets);
+        setSearchResults(tickets);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      message.error("Không thể tải danh sách vé");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleViewDetail = (ticket: Ticket) => {

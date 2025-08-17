@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import apiClient from ".";
 
 export interface Booking {
@@ -52,10 +51,10 @@ export interface UpdateBookingParams {
 
 export const getAllBookings = async (): Promise<BookingResponse> => {
   try {
-    const response = await apiClient.get("/bookings/all");
+    const response = await apiClient.get("api/bookings/all");
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lấy danh sách đặt vé");
+    throw new Error("Không thể lấy danh sách đặt vé" + error);
   }
 };
 
@@ -63,10 +62,10 @@ export const getBookingByCode = async (
   bookingCode: string
 ): Promise<BookingDetailResponse> => {
   try {
-    const response = await apiClient.get(`/bookings/${bookingCode}`);
+    const response = await apiClient.get(`api/bookings/${bookingCode}`);
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lấy thông tin chi tiết đặt vé");
+    throw new Error("Không thể lấy thông tin chi tiết đặt vé" + error);
   }
 };
 
@@ -75,9 +74,9 @@ export const updateBooking = async (
   params: UpdateBookingParams
 ): Promise<BookingDetailResponse> => {
   try {
-    const response = await apiClient.patch(`/bookings/${bookingCode}`, params);
+    const response = await apiClient.patch(`api/bookings/${bookingCode}`, params);
     return response.data;
   } catch (error) {
-    throw new Error("Không thể cập nhật thông tin đặt vé");
+    throw new Error("Không thể cập nhật thông tin đặt vé" + error);
   }
 };

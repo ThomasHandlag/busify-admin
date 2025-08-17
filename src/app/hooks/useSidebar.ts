@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import type { MenuProps } from "antd";
-import { useAuthStore } from "../stores/auth_store";
-import {
-  menuItems,
-  routeToKeyMap,
-  type AppMenuItem,
-} from "../config/menuConfig";
+import { useAuthStore } from "../../stores/auth_store";
+import { menuItems, routeToKeyMap, type AppMenuItem } from "../../config/menuConfig";
+
 
 type MenuItem = Required<MenuProps>["items"][number];
 

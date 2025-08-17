@@ -30,29 +30,9 @@ import {
   StarOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import type { Trip } from "../../../app/api/trip";
 
 const { Title, Text } = Typography;
-
-interface Trip {
-  trip_id: number;
-  operator_name: string;
-  route: {
-    start_location: string;
-    end_location: string;
-  };
-  amenities: {
-    wifi?: boolean;
-    air_conditioner?: boolean;
-    usb_charging?: boolean;
-    tv?: boolean;
-  };
-  average_rating: number;
-  departure_time: string;
-  arrival_time: string;
-  status: string;
-  price_per_seat: number;
-  available_seats: number;
-}
 
 interface TripDetailModalProps {
   trip: Trip | null;

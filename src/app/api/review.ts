@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import apiClient from ".";
 
 export interface Review {
@@ -32,10 +31,10 @@ export interface ReviewSearchParams {
 
 export const getAllReviews = async (): Promise<ReviewResponse> => {
   try {
-    const response = await apiClient.get("/reviews");
+    const response = await apiClient.get("api/reviews");
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lấy danh sách đánh giá");
+    throw new Error("Không thể lấy danh sách đánh giá" + error);
   }
 };
 
@@ -53,11 +52,11 @@ export const filterReviews = async (
     if (params.endDate) searchParams.append("endDate", params.endDate);
 
     const response = await apiClient.get(
-      `/reviews/filter?${searchParams.toString()}`
+      `api/reviews/filter?${searchParams.toString()}`
     );
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lọc đánh giá");
+    throw new Error("Không thể lọc đánh giá" + error);
   }
 };
 
@@ -71,10 +70,10 @@ export const searchReviews = async (
     if (params.comment) searchParams.append("comment", params.comment);
 
     const response = await apiClient.get(
-      `/reviews/search?${searchParams.toString()}`
+      `api/reviews/search?${searchParams.toString()}`
     );
     return response.data;
   } catch (error) {
-    throw new Error("Không thể tìm kiếm đánh giá");
+    throw new Error("Không thể tìm kiếm đánh giá" + error);
   }
 };

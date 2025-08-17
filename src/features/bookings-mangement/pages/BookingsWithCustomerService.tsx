@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState } from "react";
 import {
   Card,
@@ -25,8 +24,6 @@ import {
   EyeOutlined,
   EditOutlined,
   BookOutlined,
-  PhoneOutlined,
-  UserOutlined,
   DollarOutlined,
   ClearOutlined,
   CalendarOutlined,

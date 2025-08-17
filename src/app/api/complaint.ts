@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import apiClient from ".";
 
 export interface Complaint {
@@ -65,10 +64,10 @@ export interface UpdateComplaintParams {
 
 export const getAllComplaints = async (): Promise<ComplaintResponse> => {
   try {
-    const response = await apiClient.get("/complaints");
+    const response = await apiClient.get("api/complaints");
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lấy danh sách khiếu nại");
+    throw new Error("Không thể lấy danh sách khiếu nại" + error);
   }
 };
 
@@ -76,10 +75,10 @@ export const getComplaintById = async (
   complaintId: number
 ): Promise<ComplaintDetailResponse> => {
   try {
-    const response = await apiClient.get(`/complaints/${complaintId}`);
+    const response = await apiClient.get(`api/complaints/${complaintId}`);
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lấy thông tin chi tiết khiếu nại");
+    throw new Error("Không thể lấy thông tin chi tiết khiếu nại" + error);
   }
 };
 
@@ -89,11 +88,11 @@ export const updateComplaint = async (
 ): Promise<ComplaintDetailResponse> => {
   try {
     const response = await apiClient.patch(
-      `/complaints/${complaintId}`,
+      `api/complaints/${complaintId}`,
       params
     );
     return response.data;
   } catch (error) {
-    throw new Error("Không thể cập nhật khiếu nại");
+    throw new Error("Không thể cập nhật khiếu nại" + error);
   }
 };

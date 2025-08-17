@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState } from "react";
 import {
   Card,
@@ -31,8 +30,6 @@ import {
   ClearOutlined,
   MessageOutlined,
   FilterOutlined,
-  PhoneOutlined,
-  MailOutlined,
 } from "@ant-design/icons";
 import type { TableProps } from "antd";
 import dayjs from "dayjs";

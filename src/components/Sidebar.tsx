@@ -1,5 +1,5 @@
 import { Layout, Menu, Avatar, Typography } from "antd";
-import { useSidebar } from "../hooks/useSidebar";
+import { useSidebar } from "../app/hooks/useSidebar";
 
 const { Sider } = Layout;
 const { Text } = Typography;
