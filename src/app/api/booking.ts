@@ -39,7 +39,43 @@ export interface BookingResponse {
 export interface BookingDetailResponse {
   code: number;
   message: string;
-  result: BookingDetail;
+  // API now returns an array of detailed booking objects (see example in request)
+  result: BookingDetailAPI;
+}
+
+// Detailed booking shape returned by GET /api/bookings/{code}
+export interface BookingDetailAPI {
+  booking_id: number;
+  passenger_name: string;
+  phone: string;
+  email: string;
+  route_start: {
+    name: string;
+    address: string;
+    city: string;
+  };
+  route_end: {
+    name: string;
+    address: string;
+    city: string;
+  };
+  operator_name: string;
+  departure_time: string;
+  arrival_estimate_time: string;
+  bus: {
+    model: string;
+    license_plate: string;
+  };
+  tickets: {
+    seat_number: string;
+    ticket_code: string;
+  }[];
+  status: string;
+  payment_info: {
+    amount: number;
+    method: string;
+    timestamp: string;
+  };
 }
 
 export interface UpdateBookingParams {
@@ -74,7 +110,10 @@ export const updateBooking = async (
   params: UpdateBookingParams
 ): Promise<BookingDetailResponse> => {
   try {
-    const response = await apiClient.patch(`api/bookings/${bookingCode}`, params);
+    const response = await apiClient.patch(
+      `api/bookings/${bookingCode}`,
+      params
+    );
     return response.data;
   } catch (error) {
     throw new Error("Không thể cập nhật thông tin đặt vé" + error);

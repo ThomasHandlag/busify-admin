@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Form,
@@ -43,113 +43,45 @@ import type { TableProps } from "antd";
 import dayjs from "dayjs";
 import TripDetailModal from "./components/TripDetailModal";
 import type { Trip } from "../../app/api/trip";
+import { getAllTrips, filterTrips, type TripFilterParams } from "../../app/api/trip";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-// Mock data based on API response
-const mockTrips = [
-  {
-    trip_id: 1,
-    operator_name: "Nhà Xe ABC",
-    route: {
-      start_location: "Bến xe Miền Đông; TP.HCM",
-      end_location: "Bến xe Giáp Bát; Hà Nội",
-    },
-    amenities: {
-      wifi: true,
-      air_conditioner: true,
-    },
-    average_rating: 5.0,
-    departure_time: "2025-07-25T08:00:00Z",
-    arrival_time: "2025-07-25T20:00:00Z",
-    status: "scheduled",
-    price_per_seat: 500000.0,
-    available_seats: 39,
-  },
-  {
-    trip_id: 2,
-    operator_name: "Nhà Xe XYZ",
-    route: {
-      start_location: "Bến xe Miền Đông; TP.HCM",
-      end_location: "Bến xe Đà Lạt; Đà Lạt",
-    },
-    amenities: {
-      wifi: true,
-      air_conditioner: true,
-      usb_charging: true,
-    },
-    average_rating: 4.5,
-    departure_time: "2025-07-25T09:00:00Z",
-    arrival_time: "2025-07-25T12:00:00Z",
-    status: "scheduled",
-    price_per_seat: 150000.0,
-    available_seats: 31,
-  },
-  {
-    trip_id: 3,
-    operator_name: "Nhà Xe Huế",
-    route: {
-      start_location: "Bến xe Huế; Huế",
-      end_location: "Bến xe Miền Đông; TP.HCM",
-    },
-    amenities: {
-      wifi: true,
-      air_conditioner: true,
-    },
-    average_rating: 3.0,
-    departure_time: "2025-07-25T10:00:00Z",
-    arrival_time: "2025-07-25T16:00:00Z",
-    status: "scheduled",
-    price_per_seat: 250000.0,
-    available_seats: 47,
-  },
-  {
-    trip_id: 4,
-    operator_name: "Nhà Xe Biển Xanh",
-    route: {
-      start_location: "Bến xe Cần Thơ; Cần Thơ",
-      end_location: "Bến xe Vũng Tàu; Vũng Tàu",
-    },
-    amenities: {
-      wifi: true,
-      air_conditioner: true,
-      tv: true,
-    },
-    average_rating: 5.0,
-    departure_time: "2025-07-25T11:00:00Z",
-    arrival_time: "2025-07-25T15:00:00Z",
-    status: "cancelled",
-    price_per_seat: 200000.0,
-    available_seats: 0,
-  },
-  {
-    trip_id: 5,
-    operator_name: "Nhà Xe Nha Trang",
-    route: {
-      start_location: "Bến xe Nha Trang; Nha Trang",
-      end_location: "Bến xe Miền Đông; TP.HCM",
-    },
-    amenities: {
-      wifi: true,
-      air_conditioner: true,
-    },
-    average_rating: 4.0,
-    departure_time: "2025-07-25T12:00:00Z",
-    arrival_time: "2025-07-25T17:00:00Z",
-    status: "scheduled",
-    price_per_seat: 220000.0,
-    available_seats: 47,
-  },
-];
-
 const TripWithCustomerServicePage: React.FC = () => {
   const [form] = Form.useForm();
-  const [searchResults, setSearchResults] = useState<Trip[]>(mockTrips);
+  const [searchResults, setSearchResults] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load initial data on component mount
+  useEffect(() => {
+    loadAllTrips();
+  }, []);
+
+  const loadAllTrips = async () => {
+    try {
+      setInitialLoading(true);
+      setError(null);
+      const response = await getAllTrips();
+      if (response.code === 200) {
+        setSearchResults(response.result);
+      } else {
+        setError(response.message || "Không thể tải dữ liệu");
+        message.error(response.message || "Không thể tải dữ liệu");
+      }
+    } catch (error) {
+      setError("Lỗi kết nối đến server");
+      message.error("Lỗi kết nối đến server");
+      console.error("Error loading trips:", error);
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const handleSearch = async (values: any) => {
     const {
@@ -163,47 +95,73 @@ const TripWithCustomerServicePage: React.FC = () => {
 
     setLoading(true);
     setHasSearched(true);
+    setError(null);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      let results = mockTrips;
-
-      if (startLocation) {
-        results = results.filter((trip) =>
-          trip.route.start_location
-            .toLowerCase()
-            .includes(startLocation.toLowerCase())
-        );
+    try {
+      // Prepare filter params
+      const filterParams: TripFilterParams = {};
+      
+      if (departureDate) {
+        filterParams.departureDate = dayjs(departureDate).format("YYYY-MM-DD");
       }
-      if (endLocation) {
-        results = results.filter((trip) =>
-          trip.route.end_location
-            .toLowerCase()
-            .includes(endLocation.toLowerCase())
-        );
+      
+      if (departureTime) {
+        filterParams.untilTime = dayjs(departureTime).format("HH:mm");
       }
-      if (status) {
-        results = results.filter((trip) => trip.status === status);
-      }
+      
       if (minSeats) {
-        results = results.filter((trip) => trip.available_seats >= minSeats);
+        filterParams.availableSeats = parseInt(minSeats);
       }
 
-      setSearchResults(results);
-      setLoading(false);
+      const response = await filterTrips(filterParams);
+      
+      if (response.code === 200) {
+        let results = response.result;
 
-      if (results.length === 0) {
-        message.info("Không tìm thấy chuyến đi phù hợp");
+        // Apply client-side filtering for fields not supported by API
+        if (startLocation) {
+          results = results.filter((trip) =>
+            trip.route.start_location
+              .toLowerCase()
+              .includes(startLocation.toLowerCase())
+          );
+        }
+        if (endLocation) {
+          results = results.filter((trip) =>
+            trip.route.end_location
+              .toLowerCase()
+              .includes(endLocation.toLowerCase())
+          );
+        }
+        if (status) {
+          results = results.filter((trip) => trip.status === status);
+        }
+
+        setSearchResults(results);
+
+        if (results.length === 0) {
+          message.info("Không tìm thấy chuyến đi phù hợp");
+        } else {
+          message.success(`Tìm thấy ${results.length} chuyến đi`);
+        }
       } else {
-        message.success(`Tìm thấy ${results.length} chuyến đi`);
+        setError(response.message || "Không thể tìm kiếm chuyến đi");
+        message.error(response.message || "Không thể tìm kiếm chuyến đi");
       }
-    }, 1000);
+    } catch (error) {
+      setError("Lỗi kết nối đến server");
+      message.error("Lỗi kết nối đến server");
+      console.error("Error searching trips:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = () => {
     form.resetFields();
-    setSearchResults(mockTrips);
     setHasSearched(false);
+    setError(null);
+    loadAllTrips();
   };
 
   const handleViewDetail = (trip: Trip) => {
@@ -419,6 +377,24 @@ const TripWithCustomerServicePage: React.FC = () => {
         <CarOutlined /> Tìm kiếm chuyến đi
       </Title>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert
+          message="Lỗi"
+          description={error}
+          type="error"
+          showIcon
+          closable
+          onClose={() => setError(null)}
+          style={{ marginBottom: "24px" }}
+          action={
+            <Button size="small" onClick={loadAllTrips}>
+              Thử lại
+            </Button>
+          }
+        />
+      )}
+
       {/* Search Form */}
       <Card style={{ marginBottom: "24px" }}>
         <Form
@@ -513,6 +489,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               value={stats.total}
               prefix={<CarOutlined />}
               valueStyle={{ color: "#1890ff" }}
+              loading={initialLoading}
             />
           </Card>
         </Col>
@@ -522,6 +499,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               title="Đã lên lịch"
               value={stats.scheduled}
               valueStyle={{ color: "#52c41a" }}
+              loading={initialLoading}
             />
           </Card>
         </Col>
@@ -531,6 +509,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               title="Đã hủy"
               value={stats.cancelled}
               valueStyle={{ color: "#f5222d" }}
+              loading={initialLoading}
             />
           </Card>
         </Col>
@@ -541,6 +520,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               value={stats.totalSeats}
               prefix={<UserOutlined />}
               valueStyle={{ color: "#722ed1" }}
+              loading={initialLoading}
             />
           </Card>
         </Col>
@@ -548,11 +528,11 @@ const TripWithCustomerServicePage: React.FC = () => {
 
       {/* Search Results Table */}
       <Card>
-        {searchResults.length === 0 ? (
+        {searchResults.length === 0 && !initialLoading && !loading ? (
           <Empty description="Không có chuyến đi nào" />
         ) : (
           <>
-            {hasSearched && (
+            {hasSearched && !loading && (
               <Alert
                 message={`Tìm thấy ${searchResults.length} chuyến đi phù hợp`}
                 type="success"
@@ -560,7 +540,7 @@ const TripWithCustomerServicePage: React.FC = () => {
                 style={{ marginBottom: "16px" }}
               />
             )}
-            {!hasSearched && (
+            {!hasSearched && !initialLoading && (
               <Alert
                 message={`Hiển thị tất cả ${searchResults.length} chuyến đi trong hệ thống`}
                 type="info"
@@ -572,7 +552,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               columns={columns}
               dataSource={searchResults}
               rowKey="trip_id"
-              loading={loading}
+              loading={loading || initialLoading}
               scroll={{ x: 1400 }}
               pagination={{
                 pageSize: 10,
@@ -598,5 +578,6 @@ const TripWithCustomerServicePage: React.FC = () => {
     </div>
   );
 };
+
 
 export default TripWithCustomerServicePage;
