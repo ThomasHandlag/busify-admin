@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Form,
@@ -33,161 +34,106 @@ import {
 import type { TableProps } from "antd";
 import dayjs from "dayjs";
 import BookingDetailModal from "../components/BookingDetailModal";
+import {
+  searchBookings,
+  type SearchBookingParams,
+  type Booking,
+} from "../../../app/api/booking";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-// Mock data based on API response
-const mockBookings = [
-  {
-    booking_id: 1,
-    route_name: "TP.HCM - Hà Nội",
-    departure_time: "2025-07-25T08:00:00Z",
-    arrival_time: "2025-07-25T20:00:00Z",
-    departure_name: "Bến xe Miền Đông",
-    arrival_name: "Bến xe Giáp Bát",
-    booking_code: "BOOK123",
-    status: "confirmed",
-    total_amount: 500000.0,
-    booking_date: "2025-07-24T12:00:00Z",
-    ticket_count: 1,
-    payment_method: "Credit Card",
-  },
-  {
-    booking_id: 2,
-    route_name: "TP.HCM - Đà Lạt",
-    departure_time: "2025-07-25T09:00:00Z",
-    arrival_time: "2025-07-25T12:00:00Z",
-    departure_name: "Bến xe Miền Đông",
-    arrival_name: "Bến xe Đà Lạt",
-    booking_code: "BOOK124",
-    status: "confirmed",
-    total_amount: 150000.0,
-    booking_date: "2025-07-24T13:00:00Z",
-    ticket_count: 1,
-    payment_method: "Credit Card",
-  },
-  {
-    booking_id: 3,
-    route_name: "Huế - Đà Nẵng",
-    departure_time: "2025-07-25T10:00:00Z",
-    arrival_time: "2025-07-25T16:00:00Z",
-    departure_name: "Bến xe Huế",
-    arrival_name: "Bến xe Miền Đông",
-    booking_code: "BOOK125",
-    status: "pending",
-    total_amount: 250000.0,
-    booking_date: "2025-07-24T14:00:00Z",
-    ticket_count: 1,
-    payment_method: "Bank Transfer",
-  },
-  {
-    booking_id: 4,
-    route_name: "Cần Thơ - Vũng Tàu",
-    departure_time: "2025-07-25T11:00:00Z",
-    arrival_time: "2025-07-25T15:00:00Z",
-    departure_name: "Bến xe Cần Thơ",
-    arrival_name: "Bến xe Vũng Tàu",
-    booking_code: "BOOK126",
-    status: "confirmed",
-    total_amount: 200000.0,
-    booking_date: "2025-07-24T15:00:00Z",
-    ticket_count: 1,
-    payment_method: "Bank Transfer",
-  },
-  {
-    booking_id: 5,
-    route_name: "Nha Trang - TP.HCM",
-    departure_time: "2025-07-25T12:00:00Z",
-    arrival_time: "2025-07-25T17:00:00Z",
-    departure_name: "Bến xe Nha Trang",
-    arrival_name: "Bến xe Miền Đông",
-    booking_code: "BOOK127",
-    status: "confirmed",
-    total_amount: 220000.0,
-    booking_date: "2025-07-24T16:00:00Z",
-    ticket_count: 1,
-    payment_method: "Credit Card",
-  },
-];
-
-interface Booking {
-  booking_id: number;
-  route_name: string;
-  departure_time: string;
-  arrival_time: string;
-  departure_name: string;
-  arrival_name: string;
-  booking_code: string;
-  status: string;
-  total_amount: number;
-  booking_date: string;
-  ticket_count: number;
-  payment_method: string;
-}
-
 const BookingsWithCustomerService: React.FC = () => {
   const [form] = Form.useForm();
-  const [searchResults, setSearchResults] = useState<Booking[]>(mockBookings);
+  const [searchResults, setSearchResults] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
+  // Load initial data
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  const loadBookings = async (params: SearchBookingParams = {}) => {
+    setLoading(true);
+    try {
+      const response = await searchBookings({
+        page: 1,
+        size: 10,
+        ...params,
+      });
+
+      setSearchResults(response.result.result);
+      setPagination({
+        current: response.result.pageNumber,
+        pageSize: response.result.pageSize,
+        total: response.result.totalRecords,
+      });
+
+      if (Object.keys(params).length > 0) {
+        setHasSearched(true);
+        if (response.result.result.length === 0) {
+          message.info("Không tìm thấy đặt vé phù hợp");
+        } else {
+          message.success(`Tìm thấy ${response.result.totalRecords} đặt vé`);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading bookings:", error);
+      message.error("Không thể tải danh sách đặt vé");
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSearch = async (values: any) => {
     const { bookingCode, routeName, status, fromDate, toDate } = values;
 
-    setLoading(true);
-    setHasSearched(true);
+    const searchParams: SearchBookingParams = {
+      page: 1,
+      size: pagination.pageSize,
+    };
 
-    // Simulate API call delay
-    setTimeout(() => {
-      let results = mockBookings;
+    if (bookingCode) searchParams.bookingCode = bookingCode;
+    if (routeName) searchParams.route = routeName;
+    if (status) searchParams.status = status;
+    if (fromDate) searchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
+    if (toDate) searchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
 
-      if (bookingCode) {
-        results = results.filter((booking) =>
-          booking.booking_code.toLowerCase().includes(bookingCode.toLowerCase())
-        );
-      }
-      if (routeName) {
-        results = results.filter((booking) =>
-          booking.route_name.toLowerCase().includes(routeName.toLowerCase())
-        );
-      }
-      if (status) {
-        results = results.filter((booking) => booking.status === status);
-      }
-      if (fromDate) {
-        results = results.filter(
-          (booking) =>
-            dayjs(booking.booking_date).isAfter(fromDate, "day") ||
-            dayjs(booking.booking_date).isSame(fromDate, "day")
-        );
-      }
-      if (toDate) {
-        results = results.filter(
-          (booking) =>
-            dayjs(booking.booking_date).isBefore(toDate, "day") ||
-            dayjs(booking.booking_date).isSame(toDate, "day")
-        );
-      }
-
-      setSearchResults(results);
-      setLoading(false);
-
-      if (results.length === 0) {
-        message.info("Không tìm thấy đặt vé phù hợp");
-      } else {
-        message.success(`Tìm thấy ${results.length} đặt vé`);
-      }
-    }, 1000);
+    await loadBookings(searchParams);
   };
 
   const handleReset = () => {
     form.resetFields();
-    setSearchResults(mockBookings);
     setHasSearched(false);
+    loadBookings();
+  };
+
+  const handleTableChange = (paginationConfig: any) => {
+    const formValues = form.getFieldsValue();
+    const { bookingCode, routeName, status, fromDate, toDate } = formValues;
+
+    const searchParams: SearchBookingParams = {
+      page: paginationConfig.current,
+      size: paginationConfig.pageSize,
+    };
+
+    if (bookingCode) searchParams.bookingCode = bookingCode;
+    if (routeName) searchParams.route = routeName;
+    if (status) searchParams.status = status;
+    if (fromDate) searchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
+    if (toDate) searchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
+
+    loadBookings(searchParams);
   };
 
   const handleViewDetail = (booking: Booking) => {
@@ -195,7 +141,8 @@ const BookingsWithCustomerService: React.FC = () => {
     setIsModalVisible(true);
   };
 
-  const handleUpdateBooking = (updatedBooking: Booking) => {
+  const handleUpdateBooking = async (updatedBooking: Booking) => {
+    // Cập nhật danh sách local
     setSearchResults((prev) =>
       prev.map((booking) =>
         booking.booking_id === updatedBooking.booking_id
@@ -203,6 +150,29 @@ const BookingsWithCustomerService: React.FC = () => {
           : booking
       )
     );
+
+    // Reload danh sách từ server để đảm bảo dữ liệu mới nhất
+    try {
+      const formValues = form.getFieldsValue();
+      const { bookingCode, routeName, status, fromDate, toDate } = formValues;
+
+      const searchParams: SearchBookingParams = {
+        page: pagination.current,
+        size: pagination.pageSize,
+      };
+
+      if (bookingCode) searchParams.bookingCode = bookingCode;
+      if (routeName) searchParams.route = routeName;
+      if (status) searchParams.status = status;
+      if (fromDate)
+        searchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
+      if (toDate) searchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
+
+      await loadBookings(searchParams);
+    } catch (error) {
+      console.error("Error refreshing bookings list:", error);
+      // Không hiển thị error message để không làm phiền user
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -513,13 +483,13 @@ const BookingsWithCustomerService: React.FC = () => {
 
       {/* Results Table */}
       <Card>
-        {searchResults.length === 0 ? (
+        {searchResults.length === 0 && !loading ? (
           <Empty description="Không có đặt vé nào" />
         ) : (
           <>
             {hasSearched && (
               <Alert
-                message={`Tìm thấy ${searchResults.length} đặt vé phù hợp`}
+                message={`Tìm thấy ${pagination.total} đặt vé phù hợp`}
                 type="success"
                 showIcon
                 style={{ marginBottom: "16px" }}
@@ -527,7 +497,7 @@ const BookingsWithCustomerService: React.FC = () => {
             )}
             {!hasSearched && (
               <Alert
-                message={`Hiển thị tất cả ${searchResults.length} đặt vé trong hệ thống`}
+                message={`Hiển thị tất cả ${pagination.total} đặt vé trong hệ thống`}
                 type="info"
                 showIcon
                 style={{ marginBottom: "16px" }}
@@ -540,11 +510,15 @@ const BookingsWithCustomerService: React.FC = () => {
               loading={loading}
               scroll={{ x: 1400 }}
               pagination={{
-                pageSize: 10,
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: pagination.total,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) =>
                   `${range[0]}-${range[1]} của ${total} đặt vé`,
+                onChange: handleTableChange,
+                onShowSizeChange: handleTableChange,
               }}
             />
           </>

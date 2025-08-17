@@ -39,8 +39,8 @@ export interface BookingResponse {
 export interface BookingDetailResponse {
   code: number;
   message: string;
-  // API now returns an array of detailed booking objects (see example in request)
-  result: BookingDetailAPI;
+  // API returns an array of detailed booking objects
+  result: BookingDetailAPI[];
 }
 
 // Detailed booking shape returned by GET /api/bookings/{code}
@@ -49,6 +49,11 @@ export interface BookingDetailAPI {
   passenger_name: string;
   phone: string;
   email: string;
+  address: string;
+  guestFullName: string;
+  guestEmail: string;
+  guestPhone: string;
+  guestAddress: string;
   route_start: {
     name: string;
     address: string;
@@ -85,6 +90,34 @@ export interface UpdateBookingParams {
   guestEmail?: string;
 }
 
+export interface SearchBookingParams {
+  bookingCode?: string;
+  route?: string;
+  status?: string;
+  departureDate?: string; // ISO date format YYYY-MM-DD
+  arrivalDate?: string; // ISO date format YYYY-MM-DD
+  startDate?: string; // ISO date format YYYY-MM-DD
+  endDate?: string; // ISO date format YYYY-MM-DD
+  page?: number;
+  size?: number;
+}
+
+export interface PaginatedBookingResult {
+  result: Booking[];
+  totalRecords: number;
+  pageNumber: number;
+  totalPages: number;
+  pageSize: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+}
+
+export interface SearchBookingResponse {
+  code: number;
+  message: string;
+  result: PaginatedBookingResult;
+}
+
 export const getAllBookings = async (): Promise<BookingResponse> => {
   try {
     const response = await apiClient.get("api/bookings/all");
@@ -117,5 +150,36 @@ export const updateBooking = async (
     return response.data;
   } catch (error) {
     throw new Error("Không thể cập nhật thông tin đặt vé" + error);
+  }
+};
+
+export const searchBookings = async (
+  params: SearchBookingParams = {}
+): Promise<SearchBookingResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+
+    // Add optional parameters to query string
+    if (params.bookingCode)
+      queryParams.append("bookingCode", params.bookingCode);
+    if (params.route) queryParams.append("route", params.route);
+    if (params.status) queryParams.append("status", params.status);
+    if (params.departureDate)
+      queryParams.append("departureDate", params.departureDate);
+    if (params.arrivalDate)
+      queryParams.append("arrivalDate", params.arrivalDate);
+    if (params.startDate) queryParams.append("startDate", params.startDate);
+    if (params.endDate) queryParams.append("endDate", params.endDate);
+
+    // Add pagination parameters with defaults
+    queryParams.append("page", (params.page || 1).toString());
+    queryParams.append("size", (params.size || 10).toString());
+
+    const response = await apiClient.get(
+      `api/bookings/search?${queryParams.toString()}`
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Không thể tìm kiếm đặt vé" + error);
   }
 };

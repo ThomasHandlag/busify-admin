@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import {
   Modal,
@@ -14,6 +13,8 @@ import {
   Form,
   Input,
   Divider,
+  Spin,
+  Empty,
 } from "antd";
 import {
   BookOutlined,
@@ -29,23 +30,15 @@ import {
   HomeOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import {
+  getBookingByCode,
+  updateBooking,
+  type Booking,
+  type BookingDetailAPI,
+  type UpdateBookingParams,
+} from "../../../app/api/booking";
 
 const { Title, Text } = Typography;
-
-interface Booking {
-  booking_id: number;
-  route_name: string;
-  departure_time: string;
-  arrival_time: string;
-  departure_name: string;
-  arrival_name: string;
-  booking_code: string;
-  status: string;
-  total_amount: number;
-  booking_date: string;
-  ticket_count: number;
-  payment_method: string;
-}
 
 interface BookingDetailModalProps {
   booking: Booking | null;
@@ -53,22 +46,6 @@ interface BookingDetailModalProps {
   onClose: () => void;
   onUpdate: (booking: Booking) => void;
 }
-
-// Mock detailed booking data
-const getBookingDetail = (booking: Booking) => ({
-  id: booking.booking_id,
-  bookingCode: booking.booking_code,
-  guestFullName: "Trần Thị Khách",
-  guestEmail: "customer1@busify.com",
-  guestPhone: "0987654321",
-  guestAddress: "123 Nguyễn Văn Linh, TP.HCM",
-  seatNumber: "A1",
-  status: booking.status,
-  totalAmount: booking.total_amount,
-  createdAt: booking.booking_date,
-  updatedAt: booking.booking_date,
-  tripId: 1,
-});
 
 const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   booking,
@@ -79,22 +56,55 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [bookingDetail, setBookingDetail] = useState<any>(null);
+  const [fetchLoading, setFetchLoading] = useState(false);
+  const [bookingDetail, setBookingDetail] = useState<BookingDetailAPI | null>(
+    null
+  );
 
   useEffect(() => {
-    if (booking) {
-      const detail = getBookingDetail(booking);
-      setBookingDetail(detail);
-      form.setFieldsValue({
-        guestFullName: detail.guestFullName,
-        guestEmail: detail.guestEmail,
-        guestPhone: detail.guestPhone,
-        guestAddress: detail.guestAddress,
-      });
+    if (booking && visible) {
+      fetchBookingDetail();
     }
-  }, [booking, form]);
+    // Reset form when modal closes
+    if (!visible) {
+      form.resetFields();
+      setIsEditing(false);
+      setBookingDetail(null);
+    }
+  }, [booking, visible, form]);
 
-  if (!booking || !bookingDetail) return null;
+  const fetchBookingDetail = async () => {
+    if (!booking) return;
+
+    setFetchLoading(true);
+    try {
+      const response = await getBookingByCode(booking.booking_code);
+      console.log("API Response:", response.result); // Debug log
+
+      // API trả về array, lấy phần tử đầu tiên
+      const detailData = Array.isArray(response.result)
+        ? response.result[0]
+        : response.result;
+      setBookingDetail(detailData);
+
+      // Set form values immediately after getting data
+      // Ưu tiên sử dụng guest fields nếu có, fallback về passenger fields
+      form.setFieldsValue({
+        guestFullName:
+          detailData?.guestFullName || detailData?.passenger_name || "",
+        guestEmail: detailData?.guestEmail || detailData?.email || "",
+        guestPhone: detailData?.guestPhone || detailData?.phone || "",
+        guestAddress: detailData?.guestAddress || detailData?.address || "",
+      });
+    } catch (error) {
+      console.error("Error fetching booking detail:", error);
+      message.error("Không thể tải thông tin chi tiết đặt vé");
+    } finally {
+      setFetchLoading(false);
+    }
+  };
+
+  if (!booking) return null;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -127,41 +137,69 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   };
 
   const handleEdit = () => {
+    // Đảm bảo form được điền sẵn dữ liệu khi vào chế độ edit
+    if (bookingDetail) {
+      form.setFieldsValue({
+        guestFullName:
+          bookingDetail.guestFullName || bookingDetail.passenger_name || "",
+        guestEmail: bookingDetail.guestEmail || bookingDetail.email || "",
+        guestPhone: bookingDetail.guestPhone || bookingDetail.phone || "",
+        guestAddress: bookingDetail.guestAddress || bookingDetail.address || "",
+      });
+    }
     setIsEditing(true);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    form.setFieldsValue({
-      guestFullName: bookingDetail.guestFullName,
-      guestEmail: bookingDetail.guestEmail,
-      guestPhone: bookingDetail.guestPhone,
-      guestAddress: bookingDetail.guestAddress,
-    });
+    if (bookingDetail) {
+      console.log("Resetting form with data:", bookingDetail); // Debug log
+      form.setFieldsValue({
+        guestFullName:
+          bookingDetail.guestFullName || bookingDetail.passenger_name || "",
+        guestEmail: bookingDetail.guestEmail || bookingDetail.email || "",
+        guestPhone: bookingDetail.guestPhone || bookingDetail.phone || "",
+        guestAddress: bookingDetail.guestAddress || bookingDetail.address || "",
+      });
+    }
   };
 
-  const handleSave = async (values: any) => {
+  const handleSave = async (values: UpdateBookingParams) => {
+    if (!booking) return;
+
     setLoading(true);
+    try {
+      const response = await updateBooking(booking.booking_code, values);
+      // API có thể trả về array hoặc object, xử lý cả hai trường hợp
+      const updatedData = Array.isArray(response.result)
+        ? response.result[0]
+        : response.result;
 
-    // Simulate API call
-    setTimeout(() => {
-      const updatedDetail = {
-        ...bookingDetail,
-        guestFullName: values.guestFullName,
-        guestEmail: values.guestEmail,
-        guestPhone: values.guestPhone,
-        guestAddress: values.guestAddress,
-        updatedAt: new Date().toISOString(),
-      };
+      // Cập nhật state với dữ liệu mới
+      setBookingDetail(updatedData);
 
-      setBookingDetail(updatedDetail);
+      // Cập nhật form với dữ liệu mới từ API
+      form.setFieldsValue({
+        guestFullName: updatedData?.passenger_name || "",
+        guestEmail: updatedData?.email || "",
+        guestPhone: updatedData?.phone || "",
+        guestAddress: updatedData?.address || "",
+      });
+
       setIsEditing(false);
-      setLoading(false);
       message.success("Cập nhật thông tin vé thành công");
 
       // Update parent component
       onUpdate({ ...booking });
-    }, 1000);
+
+      // Reload dữ liệu từ API để đảm bảo consistency
+      await fetchBookingDetail();
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      message.error("Không thể cập nhật thông tin đặt vé");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getPaymentMethodIcon = (method: string) => {
@@ -210,211 +248,330 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
       ]}
     >
       <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
-        {/* Status */}
-        <Row gutter={16} style={{ marginBottom: "16px" }}>
-          <Col span={24}>
-            <Card size="small" style={{ textAlign: "center" }}>
-              <Title level={4} style={{ margin: 0 }}>
-                Trạng thái:{" "}
-                <Tag
-                  color={getStatusColor(booking.status)}
-                  style={{ fontSize: "14px" }}
-                >
-                  {getStatusText(booking.status)}
-                </Tag>
-              </Title>
-            </Card>
-          </Col>
-        </Row>
+        {fetchLoading ? (
+          <div style={{ textAlign: "center", padding: "50px" }}>
+            <Spin size="large" />
+            <div style={{ marginTop: "16px" }}>
+              Đang tải thông tin chi tiết...
+            </div>
+          </div>
+        ) : bookingDetail ? (
+          <>
+            {/* Status */}
+            <Row gutter={16} style={{ marginBottom: "16px" }}>
+              <Col span={24}>
+                <Card size="small" style={{ textAlign: "center" }}>
+                  <Title level={4} style={{ margin: 0 }}>
+                    Trạng thái:{" "}
+                    <Tag
+                      color={getStatusColor(bookingDetail.status)}
+                      style={{ fontSize: "14px" }}
+                    >
+                      {getStatusText(bookingDetail.status)}
+                    </Tag>
+                  </Title>
+                </Card>
+              </Col>
+            </Row>
 
-        {/* Trip Information */}
-        <Card
-          title="Thông tin chuyến đi"
-          size="small"
-          style={{ marginBottom: "16px" }}
-        >
-          <Descriptions column={2} size="small">
-            <Descriptions.Item label="Tuyến đường" span={2}>
-              <Text strong>{booking.route_name}</Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Điểm khởi hành">
-              <Space>
-                <EnvironmentOutlined style={{ color: "#52c41a" }} />
-                {booking.departure_name}
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Điểm đến">
-              <Space>
-                <EnvironmentOutlined style={{ color: "#f5222d" }} />
-                {booking.arrival_name}
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày khởi hành">
-              <Space>
-                <CalendarOutlined />
-                {dayjs(booking.departure_time).format("DD/MM/YYYY")}
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Giờ khởi hành">
-              {dayjs(booking.departure_time).format("HH:mm")} -{" "}
-              {dayjs(booking.arrival_time).format("HH:mm")}
-            </Descriptions.Item>
-            <Descriptions.Item label="Số ghế">
-              <Tag color="cyan">{bookingDetail.seatNumber}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Số lượng vé">
-              {booking.ticket_count} vé
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
-
-        {/* Customer Information */}
-        <Card
-          title="Thông tin khách hàng"
-          size="small"
-          style={{ marginBottom: "16px" }}
-          extra={
-            !isEditing && (
-              <Button
-                type="link"
-                icon={<EditOutlined />}
-                onClick={handleEdit}
-                size="small"
-              >
-                Chỉnh sửa
-              </Button>
-            )
-          }
-        >
-          {isEditing ? (
-            <Form
-              form={form}
-              layout="vertical"
-              onFinish={handleSave}
+            {/* Trip Information */}
+            <Card
+              title="Thông tin chuyến đi"
               size="small"
+              style={{ marginBottom: "16px" }}
             >
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    name="guestFullName"
-                    label="Họ và tên"
-                    rules={[
-                      { required: true, message: "Vui lòng nhập họ và tên" },
-                    ]}
-                  >
-                    <Input prefix={<UserOutlined />} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="guestPhone"
-                    label="Số điện thoại"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Vui lòng nhập số điện thoại",
-                      },
-                    ]}
-                  >
-                    <Input prefix={<PhoneOutlined />} />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    name="guestEmail"
-                    label="Email"
-                    rules={[
-                      { required: true, message: "Vui lòng nhập email" },
-                      { type: "email", message: "Email không hợp lệ" },
-                    ]}
-                  >
-                    <Input prefix={<MailOutlined />} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="guestAddress" label="Địa chỉ">
-                    <Input prefix={<HomeOutlined />} />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Form>
-          ) : (
-            <Descriptions column={2} size="small">
-              <Descriptions.Item label="Họ và tên">
-                <Space>
-                  <UserOutlined />
-                  <Text strong>{bookingDetail.guestFullName}</Text>
-                </Space>
-              </Descriptions.Item>
-              <Descriptions.Item label="Số điện thoại">
-                <Space>
-                  <PhoneOutlined />
-                  {bookingDetail.guestPhone}
-                </Space>
-              </Descriptions.Item>
-              <Descriptions.Item label="Email">
-                <Space>
-                  <MailOutlined />
-                  {bookingDetail.guestEmail}
-                </Space>
-              </Descriptions.Item>
-              <Descriptions.Item label="Địa chỉ">
-                <Space>
-                  <HomeOutlined />
-                  {bookingDetail.guestAddress || "Chưa cập nhật"}
-                </Space>
-              </Descriptions.Item>
-            </Descriptions>
-          )}
-        </Card>
+              <Descriptions column={2} size="small">
+                {bookingDetail.operator_name && (
+                  <Descriptions.Item label="Nhà xe" span={2}>
+                    <Text strong>{bookingDetail.operator_name}</Text>
+                  </Descriptions.Item>
+                )}
+                <Descriptions.Item label="Điểm khởi hành">
+                  <Space>
+                    <EnvironmentOutlined style={{ color: "#52c41a" }} />
+                    <div>
+                      <div>
+                        {bookingDetail.route_start?.name ||
+                          booking.departure_name}
+                      </div>
+                      {bookingDetail.route_start?.address &&
+                        bookingDetail.route_start?.city && (
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            {bookingDetail.route_start.address},{" "}
+                            {bookingDetail.route_start.city}
+                          </Text>
+                        )}
+                    </div>
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Điểm đến">
+                  <Space>
+                    <EnvironmentOutlined style={{ color: "#f5222d" }} />
+                    <div>
+                      <div>
+                        {bookingDetail.route_end?.name || booking.arrival_name}
+                      </div>
+                      {bookingDetail.route_end?.address &&
+                        bookingDetail.route_end?.city && (
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            {bookingDetail.route_end.address},{" "}
+                            {bookingDetail.route_end.city}
+                          </Text>
+                        )}
+                    </div>
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Ngày khởi hành">
+                  <Space>
+                    <CalendarOutlined />
+                    {dayjs(
+                      bookingDetail.departure_time || booking.departure_time
+                    ).format("DD/MM/YYYY")}
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Giờ khởi hành">
+                  {dayjs(
+                    bookingDetail.departure_time || booking.departure_time
+                  ).format("HH:mm")}{" "}
+                  -{" "}
+                  {dayjs(
+                    bookingDetail.arrival_estimate_time || booking.arrival_time
+                  ).format("HH:mm")}
+                </Descriptions.Item>
+                {bookingDetail.bus && (
+                  <Descriptions.Item label="Phương tiện">
+                    <div>
+                      <div>{bookingDetail.bus.model}</div>
+                      <Text type="secondary" style={{ fontSize: "12px" }}>
+                        Biển số: {bookingDetail.bus.license_plate}
+                      </Text>
+                    </div>
+                  </Descriptions.Item>
+                )}
+                <Descriptions.Item label="Ghế đã đặt">
+                  <Space>
+                    {bookingDetail.tickets &&
+                    bookingDetail.tickets.length > 0 ? (
+                      bookingDetail.tickets.map((ticket, index) => (
+                        <Tag key={index} color="cyan">
+                          {ticket.seat_number}
+                        </Tag>
+                      ))
+                    ) : (
+                      <Tag color="cyan">N/A</Tag>
+                    )}
+                  </Space>
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
 
-        {/* Payment Information */}
-        <Card
-          title="Thông tin thanh toán"
-          size="small"
-          style={{ marginBottom: "16px" }}
-        >
-          <Descriptions column={2} size="small">
-            <Descriptions.Item label="Tổng tiền">
-              <Space>
-                <DollarOutlined />
-                <Text strong style={{ color: "#52c41a", fontSize: "16px" }}>
-                  {booking.total_amount.toLocaleString("vi-VN")} VNĐ
-                </Text>
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Phương thức thanh toán">
-              <Space>
-                {getPaymentMethodIcon(booking.payment_method)}
-                {booking.payment_method}
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày đặt vé">
-              <Space>
-                <CalendarOutlined />
-                {dayjs(booking.booking_date).format("DD/MM/YYYY HH:mm")}
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Cập nhật lần cuối">
-              <Space>
-                <CalendarOutlined />
-                {dayjs(bookingDetail.updatedAt).format("DD/MM/YYYY HH:mm")}
-              </Space>
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
+            {/* Customer Information */}
+            <Card
+              title="Thông tin khách hàng"
+              size="small"
+              style={{ marginBottom: "16px" }}
+              extra={
+                !isEditing && (
+                  <Button
+                    type="link"
+                    icon={<EditOutlined />}
+                    onClick={handleEdit}
+                    size="small"
+                  >
+                    Chỉnh sửa
+                  </Button>
+                )
+              }
+            >
+              {isEditing ? (
+                <Form
+                  form={form}
+                  layout="vertical"
+                  onFinish={handleSave}
+                  size="small"
+                  preserve={false}
+                  key={`edit-form-${bookingDetail?.booking_id}-${isEditing}`} // Force re-render với key unique
+                  initialValues={{
+                    guestFullName:
+                      bookingDetail.guestFullName ||
+                      bookingDetail.passenger_name ||
+                      "",
+                    guestEmail:
+                      bookingDetail.guestEmail || bookingDetail.email || "",
+                    guestPhone:
+                      bookingDetail.guestPhone || bookingDetail.phone || "",
+                    guestAddress:
+                      bookingDetail.guestAddress || bookingDetail.address || "",
+                  }}
+                >
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="guestFullName"
+                        label="Họ và tên"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Vui lòng nhập họ và tên",
+                          },
+                        ]}
+                      >
+                        <Input prefix={<UserOutlined />} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="guestPhone"
+                        label="Số điện thoại"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Vui lòng nhập số điện thoại",
+                          },
+                        ]}
+                      >
+                        <Input prefix={<PhoneOutlined />} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="guestEmail"
+                        label="Email"
+                        rules={[
+                          { required: true, message: "Vui lòng nhập email" },
+                          { type: "email", message: "Email không hợp lệ" },
+                        ]}
+                      >
+                        <Input prefix={<MailOutlined />} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="guestAddress" label="Địa chỉ">
+                        <Input prefix={<HomeOutlined />} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Form>
+              ) : (
+                <Descriptions
+                  column={2}
+                  size="small"
+                  key={`view-${bookingDetail?.booking_id}`}
+                >
+                  <Descriptions.Item label="Họ và tên">
+                    <Space>
+                      <UserOutlined />
+                      <Text strong>
+                        {bookingDetail.guestFullName ||
+                          bookingDetail.passenger_name ||
+                          "Chưa có thông tin"}
+                      </Text>
+                    </Space>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Số điện thoại">
+                    <Space>
+                      <PhoneOutlined />
+                      <Text>
+                        {bookingDetail.guestPhone ||
+                          bookingDetail.phone ||
+                          "Chưa có thông tin"}
+                      </Text>
+                    </Space>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Email">
+                    <Space>
+                      <MailOutlined />
+                      <Text>
+                        {bookingDetail.guestEmail ||
+                          bookingDetail.email ||
+                          "Chưa có thông tin"}
+                      </Text>
+                    </Space>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Địa chỉ">
+                    <Space>
+                      <HomeOutlined />
+                      <Text>
+                        {bookingDetail.guestAddress ||
+                          bookingDetail.address ||
+                          "Chưa cập nhật"}
+                      </Text>
+                    </Space>
+                  </Descriptions.Item>
+                </Descriptions>
+              )}
+            </Card>
 
-        <Divider />
+            {/* Payment Information */}
+            <Card
+              title="Thông tin thanh toán"
+              size="small"
+              style={{ marginBottom: "16px" }}
+            >
+              <Descriptions column={2} size="small">
+                <Descriptions.Item label="Tổng tiền">
+                  <Space>
+                    <DollarOutlined />
+                    <Text strong style={{ color: "#52c41a", fontSize: "16px" }}>
+                      {(
+                        bookingDetail.payment_info?.amount ||
+                        booking.total_amount
+                      ).toLocaleString("vi-VN")}{" "}
+                      VNĐ
+                    </Text>
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Phương thức thanh toán">
+                  <Space>
+                    {getPaymentMethodIcon(
+                      bookingDetail.payment_info?.method ||
+                        booking.payment_method
+                    )}
+                    {bookingDetail.payment_info?.method ||
+                      booking.payment_method}
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Thời gian thanh toán">
+                  <Space>
+                    <CalendarOutlined />
+                    {dayjs(
+                      bookingDetail.payment_info?.timestamp ||
+                        booking.booking_date
+                    ).format("DD/MM/YYYY HH:mm")}
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Mã vé">
+                  <Space>
+                    {bookingDetail.tickets &&
+                    bookingDetail.tickets.length > 0 ? (
+                      bookingDetail.tickets.map((ticket, index) => (
+                        <Tag key={index} color="blue">
+                          {ticket.ticket_code}
+                        </Tag>
+                      ))
+                    ) : (
+                      <Tag color="blue">{booking.booking_code}</Tag>
+                    )}
+                  </Space>
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
 
-        {/* Notes */}
-        <Card size="small" style={{ backgroundColor: "#f9f9f9" }}>
-          <Text type="secondary" style={{ fontSize: "12px" }}>
-            Chỉ có thể chỉnh sửa thông tin khách hàng. Thông tin chuyến đi và
-            thanh toán không thể thay đổi sau khi đã xác nhận.
-          </Text>
-        </Card>
+            <Divider />
+
+            {/* Notes */}
+            <Card size="small" style={{ backgroundColor: "#f9f9f9" }}>
+              <Text type="secondary" style={{ fontSize: "12px" }}>
+                Chỉ có thể chỉnh sửa thông tin khách hàng. Thông tin chuyến đi
+                và thanh toán không thể thay đổi sau khi đã xác nhận.
+              </Text>
+            </Card>
+          </>
+        ) : (
+          <Empty description="Không thể tải thông tin chi tiết" />
+        )}
       </div>
     </Modal>
   );
