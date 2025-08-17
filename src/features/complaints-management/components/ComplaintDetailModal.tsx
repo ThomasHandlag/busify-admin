@@ -31,43 +31,15 @@ import {
   CloseOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import {
+  getComplaintById,
+  updateComplaint,
+  type ComplaintDetail,
+} from "../../../app/api/complaint";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
-
-// Mock detailed complaint data based on API
-const mockComplaintDetail = {
-  id: 2,
-  title: "Khiếu nại về thời gian",
-  description: "Xe đến muộn 30 phút so với lịch trình đã thông báo",
-  status: "pending",
-  createdAt: "2025-07-25T14:00:00Z",
-  updatedAt: "2025-07-25T14:00:00Z",
-  customer: {
-    customerId: 2,
-    customerName: "Trần Thị Khách",
-    customerEmail: "customerservice@gmail.com",
-    customerPhone: "0987654321",
-    customerAddress: "456 Nguyễn Trãi, TP.HCM",
-  },
-  booking: {
-    bookingId: 2,
-    bookingCode: "BOOK124",
-    bookingStatus: "confirmed",
-    totalAmount: 150000.0,
-    seatNumber: "C1",
-    bookingDate: "2025-07-24T13:00:00Z",
-    routeName: "TP.HCM - Đà Lạt",
-    startLocation: "Bến xe Miền Đông",
-    endLocation: "Bến xe Đà Lạt",
-    departureTime: "2025-07-25T09:00:00Z",
-    arrivalTime: "2025-07-25T12:00:00Z",
-    operatorName: "Nhà Xe XYZ",
-    busLicensePlate: "51B-67890",
-  },
-  assignedAgent: null,
-};
 
 interface ComplaintDetailModalProps {
   complaint: any;
@@ -84,37 +56,59 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [complaintDetail, setComplaintDetail] = useState<any>(null);
+  const [complaintDetail, setComplaintDetail] =
+    useState<ComplaintDetail | null>(null);
 
   useEffect(() => {
-    if (complaint && visible) {
-      // Simulate fetching detailed complaint data
-      setComplaintDetail(mockComplaintDetail);
-      form.setFieldsValue({
-        status: complaint.status,
-        title: complaint.title,
-        description: complaint.description,
-      });
-    }
+    const fetchComplaintDetail = async () => {
+      if (complaint && visible) {
+        setDetailLoading(true);
+        try {
+          const response = await getComplaintById(complaint.id);
+          setComplaintDetail(response.result);
+          form.setFieldsValue({
+            status: response.result.status,
+            title: response.result.title,
+            description: response.result.description,
+          });
+        } catch (error) {
+          message.error("Không thể tải thông tin chi tiết khiếu nại");
+          console.error("Error fetching complaint detail:", error);
+        } finally {
+          setDetailLoading(false);
+        }
+      }
+    };
+
+    fetchComplaintDetail();
   }, [complaint, visible, form]);
 
   const handleUpdate = async (values: any) => {
-    setLoading(true);
+    if (!complaintDetail) return;
 
-    // Simulate API call
-    setTimeout(() => {
+    setLoading(true);
+    try {
+      const response = await updateComplaint(complaintDetail.id, values);
       const updatedComplaint = {
         ...complaint,
         ...values,
-        updatedAt: new Date().toISOString(),
+        updatedAt: response.result.updatedAt,
       };
 
       onUpdate(updatedComplaint);
-      setLoading(false);
       setIsEditing(false);
+
+      // Update local state with new data
+      setComplaintDetail(response.result);
       message.success("Khiếu nại đã được cập nhật thành công");
-    }, 1000);
+    } catch (error) {
+      message.error("Không thể cập nhật khiếu nại");
+      console.error("Error updating complaint:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -177,7 +171,7 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
     }
   };
 
-  if (!complaint || !complaintDetail) {
+  if (!complaint) {
     return null;
   }
 
@@ -203,6 +197,7 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
                 type="primary"
                 icon={<EditOutlined />}
                 onClick={() => setIsEditing(true)}
+                disabled={detailLoading || !complaintDetail}
               >
                 Xử lý khiếu nại
               </Button>
@@ -224,7 +219,19 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
       }
     >
       <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
-        {!isEditing ? (
+        {detailLoading ? (
+          <div style={{ textAlign: "center", padding: "50px" }}>
+            <Space direction="vertical">
+              <span>Đang tải thông tin chi tiết...</span>
+            </Space>
+          </div>
+        ) : !complaintDetail ? (
+          <div style={{ textAlign: "center", padding: "50px" }}>
+            <Text type="secondary">
+              Không thể tải thông tin chi tiết khiếu nại
+            </Text>
+          </div>
+        ) : !isEditing ? (
           <>
             {/* Complaint Information */}
             <Card title="Thông tin khiếu nại" style={{ marginBottom: "16px" }}>

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Form,
@@ -36,96 +36,51 @@ import {
 import type { TableProps } from "antd";
 import dayjs from "dayjs";
 import ReviewDetailModal from "../components/ReviewDetailModal";
+import {
+  getAllReviews,
+  filterReviews,
+  searchReviews,
+  type Review,
+  type ReviewFilterParams,
+  type ReviewSearchParams,
+} from "../../../app/api/review";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 const { TabPane } = Tabs;
 
-// Mock data based on API response
-const mockReviews = [
-  {
-    reviewId: 1,
-    rating: 5,
-    customerName: "Nguyễn Văn Admin",
-    comment: "Chuyến đi tuyệt vời!",
-    createdAt: "2025-07-25T21:00:00Z",
-  },
-  {
-    reviewId: 2,
-    rating: 4,
-    customerName: "Nguyễn Văn Admin",
-    comment: "Chuyến đi thoải mái, tài xế thân thiện",
-    createdAt: "2025-07-25T13:00:00Z",
-  },
-  {
-    reviewId: 3,
-    rating: 3,
-    customerName: "Nguyễn Văn Admin",
-    comment: "Xe sạch sẽ nhưng đến muộn 15 phút",
-    createdAt: "2025-07-25T17:00:00Z",
-  },
-  {
-    reviewId: 4,
-    rating: 5,
-    customerName: "Nguyễn Văn Admin",
-    comment: "Dịch vụ tốt, sẽ quay lại!",
-    createdAt: "2025-07-25T16:00:00Z",
-  },
-  {
-    reviewId: 5,
-    rating: 4,
-    customerName: "Nguyễn Văn Admin",
-    comment: "Wifi hơi yếu nhưng tổng thể ổn",
-    createdAt: "2025-07-25T18:00:00Z",
-  },
-  {
-    reviewId: 6,
-    rating: 5,
-    customerName: "Nguyễn Văn Admin",
-    comment: "Tài xế lái an toàn, rất hài lòng",
-    createdAt: "2025-07-25T22:00:00Z",
-  },
-  {
-    reviewId: 7,
-    rating: 4,
-    customerName: "Nguyễn Văn Admin",
-    comment: "Ghế ngồi êm, chuyến đi suôn sẻ",
-    createdAt: "2025-07-25T23:00:00Z",
-  },
-  {
-    reviewId: 8,
-    rating: 2,
-    customerName: "Trần Thị B",
-    comment: "Xe cũ, điều hòa không mát",
-    createdAt: "2025-07-24T15:30:00Z",
-  },
-  {
-    reviewId: 9,
-    rating: 1,
-    customerName: "Lê Văn C",
-    comment: "Tài xế lái rất nhanh, cảm thấy không an toàn",
-    createdAt: "2025-07-24T10:15:00Z",
-  },
-];
-
-interface Review {
-  reviewId: number;
-  rating: number;
-  customerName: string;
-  comment: string;
-  createdAt: string;
-}
-
 const ReviewsWithCustomerServicePage: React.FC = () => {
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
-  const [searchResults, setSearchResults] = useState<Review[]>(mockReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [searchResults, setSearchResults] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("filter");
+
+  // Load all reviews on component mount
+  useEffect(() => {
+    loadAllReviews();
+  }, []);
+
+  const loadAllReviews = async () => {
+    setLoading(true);
+    try {
+      const response = await getAllReviews();
+      if (response.code === 200) {
+        setReviews(response.result.reviews);
+        setSearchResults(response.result.reviews);
+      }
+    } catch (error) {
+      message.error("Không thể tải danh sách đánh giá");
+      console.error("Error loading reviews:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFilter = async (values: any) => {
@@ -134,48 +89,58 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
     setLoading(true);
     setHasSearched(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      let results = mockReviews;
+    try {
+      const filterParams: ReviewFilterParams = {};
 
-      // Filter by exact rating
+      // Add exact rating filter
       if (rating) {
-        results = results.filter((review) => review.rating === rating);
+        filterParams.rating = rating;
       }
 
-      // Filter by rating range
+      // Add rating range filter
       if (ratingRange && ratingRange.length === 2) {
-        const [minRating, maxRating] = ratingRange;
-        results = results.filter(
-          (review) => review.rating >= minRating && review.rating <= maxRating
+        const [minRating, maxRating] = ratingRange.sort(
+          (a: number, b: number) => a - b
         );
+        filterParams.minRating = minRating;
+        filterParams.maxRating = maxRating;
       }
 
-      // Filter by date range
+      // Add date range filter
       if (dateRange && dateRange.length === 2) {
         const [startDate, endDate] = dateRange;
-        results = results.filter((review) => {
-          const reviewDate = dayjs(review.createdAt);
-          return reviewDate.isAfter(startDate) && reviewDate.isBefore(endDate);
-        });
+        filterParams.startDate = startDate.format("YYYY-MM-DD");
+        filterParams.endDate = endDate.format("YYYY-MM-DD");
       }
 
-      // Filter by customer name
-      if (customerName) {
-        results = results.filter((review) =>
-          review.customerName.toLowerCase().includes(customerName.toLowerCase())
-        );
-      }
+      const response = await filterReviews(filterParams);
 
-      setSearchResults(results);
+      if (response.code === 200) {
+        let results = response.result.reviews;
+
+        // Apply client-side customer name filter if provided
+        if (customerName) {
+          results = results.filter((review) =>
+            review.customerName
+              .toLowerCase()
+              .includes(customerName.toLowerCase())
+          );
+        }
+
+        setSearchResults(results);
+
+        if (results.length === 0) {
+          message.info("Không tìm thấy đánh giá phù hợp");
+        } else {
+          message.success(`Tìm thấy ${results.length} đánh giá`);
+        }
+      }
+    } catch (error) {
+      message.error("Lỗi khi lọc đánh giá");
+      console.error("Filter error:", error);
+    } finally {
       setLoading(false);
-
-      if (results.length === 0) {
-        message.info("Không tìm thấy đánh giá phù hợp");
-      } else {
-        message.success(`Tìm thấy ${results.length} đánh giá`);
-      }
-    }, 1000);
+    }
   };
 
   // New search function
@@ -190,39 +155,41 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
     setLoading(true);
     setHasSearched(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      let results = mockReviews;
+    try {
+      const searchParams: ReviewSearchParams = {};
 
-      // Filter by customer name
       if (customerName) {
-        results = results.filter((review) =>
-          review.customerName.toLowerCase().includes(customerName.toLowerCase())
-        );
+        searchParams.customerName = customerName;
       }
 
-      // Filter by comment content
       if (comment) {
-        results = results.filter((review) =>
-          review.comment.toLowerCase().includes(comment.toLowerCase())
-        );
+        searchParams.comment = comment;
       }
 
-      setSearchResults(results);
+      const response = await searchReviews(searchParams);
+
+      if (response.code === 200) {
+        const results = response.result.reviews;
+        setSearchResults(results);
+
+        if (results.length === 0) {
+          message.info("Không tìm thấy đánh giá phù hợp với từ khóa tìm kiếm");
+        } else {
+          message.success(`Tìm thấy ${results.length} đánh giá phù hợp`);
+        }
+      }
+    } catch (error) {
+      message.error("Lỗi khi tìm kiếm đánh giá");
+      console.error("Search error:", error);
+    } finally {
       setLoading(false);
-
-      if (results.length === 0) {
-        message.info("Không tìm thấy đánh giá phù hợp với từ khóa tìm kiếm");
-      } else {
-        message.success(`Tìm thấy ${results.length} đánh giá phù hợp`);
-      }
-    }, 1000);
+    }
   };
 
   const handleReset = () => {
     form.resetFields();
     searchForm.resetFields();
-    setSearchResults(mockReviews);
+    setSearchResults(reviews);
     setHasSearched(false);
   };
 
@@ -334,9 +301,13 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
     good: searchResults.filter((r) => r.rating === 4).length,
     average: searchResults.filter((r) => r.rating === 3).length,
     poor: searchResults.filter((r) => r.rating <= 2).length,
-    averageRating: (
-      searchResults.reduce((sum, r) => sum + r.rating, 0) / searchResults.length
-    ).toFixed(1),
+    averageRating:
+      searchResults.length > 0
+        ? (
+            searchResults.reduce((sum, r) => sum + r.rating, 0) /
+            searchResults.length
+          ).toFixed(1)
+        : "0.0",
   };
 
   return (

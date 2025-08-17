@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Form,
@@ -34,78 +34,18 @@ import {
 import type { TableProps } from "antd";
 import dayjs from "dayjs";
 import ComplaintDetailModal from "../components/ComplaintDetailModal";
+import { getAllComplaints, type Complaint } from "../../../app/api/complaint";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 const { TabPane } = Tabs;
 
-// Mock data based on API response
-const mockComplaints = [
-  {
-    id: 1,
-    title: "Khiếu nại về ghế",
-    description: "Ghế không thoải mái, làm tôi đau lưng suốt chuyến đi",
-    customerName: "Nguyễn Văn A",
-    createdAt: "2025-07-25T22:00:00Z",
-    status: "New",
-  },
-  {
-    id: 2,
-    title: "Khiếu nại về thời gian",
-    description: "Xe đến muộn 30 phút so với lịch trình đã thông báo",
-    customerName: "Trần Thị B",
-    createdAt: "2025-07-25T14:00:00Z",
-    status: "pending",
-  },
-  {
-    id: 3,
-    title: "Khiếu nại về wifi",
-    description: "Wifi không hoạt động trong suốt chuyến đi",
-    customerName: "Lê Văn C",
-    createdAt: "2025-07-25T15:00:00Z",
-    status: "New",
-  },
-  {
-    id: 4,
-    title: "Khiếu nại về điều hòa",
-    description: "Điều hòa không mát, quá nóng trong xe",
-    customerName: "Phạm Thị D",
-    createdAt: "2025-07-24T16:00:00Z",
-    status: "in_progress",
-  },
-  {
-    id: 5,
-    title: "Khiếu nại về tài xế",
-    description: "Tài xế lái xe quá nhanh, không an toàn",
-    customerName: "Hoàng Văn E",
-    createdAt: "2025-07-24T18:00:00Z",
-    status: "resolved",
-  },
-  {
-    id: 6,
-    title: "Khiếu nại về vệ sinh",
-    description: "Xe không sạch sẽ, có mùi khó chịu",
-    customerName: "Ngô Thị F",
-    createdAt: "2025-07-23T10:00:00Z",
-    status: "rejected",
-  },
-];
-
-interface Complaint {
-  id: number;
-  title: string;
-  description: string;
-  customerName: string;
-  createdAt: string;
-  status: string;
-}
-
 const ComplaintsWithCustomerServicePage: React.FC = () => {
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
-  const [searchResults, setSearchResults] =
-    useState<Complaint[]>(mockComplaints);
+  const [allComplaints, setAllComplaints] = useState<Complaint[]>([]);
+  const [searchResults, setSearchResults] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(
@@ -113,6 +53,25 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("search");
+
+  // Fetch all complaints on component mount
+  useEffect(() => {
+    const fetchComplaints = async () => {
+      setLoading(true);
+      try {
+        const response = await getAllComplaints();
+        setAllComplaints(response.result.complaints);
+        setSearchResults(response.result.complaints);
+      } catch (error) {
+        message.error("Không thể tải danh sách khiếu nại");
+        console.error("Error fetching complaints:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchComplaints();
+  }, []);
 
   const handleSearch = async (values: any) => {
     const { customerName, title, description } = values;
@@ -125,8 +84,8 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
     setLoading(true);
     setHasSearched(true);
 
-    setTimeout(() => {
-      let results = mockComplaints;
+    try {
+      let results = allComplaints;
 
       if (customerName) {
         results = results.filter((complaint) =>
@@ -149,14 +108,18 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
       }
 
       setSearchResults(results);
-      setLoading(false);
 
       if (results.length === 0) {
         message.info("Không tìm thấy khiếu nại phù hợp với từ khóa tìm kiếm");
       } else {
         message.success(`Tìm thấy ${results.length} khiếu nại phù hợp`);
       }
-    }, 1000);
+    } catch (error) {
+      message.error("Có lỗi xảy ra khi tìm kiếm");
+      console.error("Search error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFilter = async (values: any) => {
@@ -165,8 +128,8 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
     setLoading(true);
     setHasSearched(true);
 
-    setTimeout(() => {
-      let results = mockComplaints;
+    try {
+      let results = allComplaints;
 
       if (status) {
         results = results.filter((complaint) => complaint.status === status);
@@ -191,20 +154,24 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
       }
 
       setSearchResults(results);
-      setLoading(false);
 
       if (results.length === 0) {
         message.info("Không tìm thấy khiếu nại phù hợp");
       } else {
         message.success(`Tìm thấy ${results.length} khiếu nại`);
       }
-    }, 1000);
+    } catch (error) {
+      message.error("Có lỗi xảy ra khi lọc dữ liệu");
+      console.error("Filter error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = () => {
     form.resetFields();
     searchForm.resetFields();
-    setSearchResults(mockComplaints);
+    setSearchResults(allComplaints);
     setHasSearched(false);
   };
 
@@ -214,13 +181,16 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
   };
 
   const handleUpdateComplaint = (updatedComplaint: any) => {
-    setSearchResults((prev) =>
-      prev.map((complaint) =>
+    // Update both allComplaints and searchResults
+    const updateComplaintInArray = (complaints: Complaint[]) =>
+      complaints.map((complaint) =>
         complaint.id === updatedComplaint.id
           ? { ...complaint, status: updatedComplaint.status }
           : complaint
-      )
-    );
+      );
+
+    setAllComplaints((prev) => updateComplaintInArray(prev));
+    setSearchResults((prev) => updateComplaintInArray(prev));
     message.success("Khiếu nại đã được xử lý thành công");
   };
 
