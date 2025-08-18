@@ -38,15 +38,13 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
   const location = useLocation();
   const user = useAuthStore((state) => state.loggedInUser);
 
-  // Map route paths to menu keys
-  const routeToKeyMap: Record<string, string> = {
-    "/admin": "dashboard",
-    "/admin/users-management": "users",
-    "/admin/bus-operators-management": "bus-operators-management",
-  };
-
   // Update selected key based on current location
   useEffect(() => {
+    const routeToKeyMap: Record<string, string> = {
+      "/admin": "dashboard",
+      "/admin/users-management": "users",
+      "/admin/bus-operators-management": "bus-operators-management",
+    };
     const currentKey = routeToKeyMap[location.pathname] || "dashboard";
     setSelectedKey(currentKey);
   }, [location.pathname]);
@@ -197,6 +195,7 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
         };
       });
   };
+
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedKey(key);
 
