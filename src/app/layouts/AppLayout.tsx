@@ -7,9 +7,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const auth = useAuthStore();
   useEffect(() => {
     if (auth.loggedInUser) {
-      navigate("dashboard");
+      navigate(window.location.pathname);
     } else {
-      navigate("login");
+      navigate("/login");
     }
   }, [auth.loggedInUser, navigate]);
   return <div className="max-w-full h-screen">{children}</div>;

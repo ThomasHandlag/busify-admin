@@ -1,5 +1,11 @@
 import axios from "axios";
 
+export interface ApiResponse<T = unknown> {
+  code: number;
+  message: string;
+  result: T;
+}
+
 const apiClient = axios.create({
   baseURL: import.meta.env.SECRET_API || "http://localhost:8080/",
 });

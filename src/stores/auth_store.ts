@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
                 false,
                 { type: "@AUTH/LOGIN/SUCCESS" }
               );
-              navigate("/dashboard");
+              navigate("/admin");
             } catch (error) {
               console.error("Login error:", error);
               set(

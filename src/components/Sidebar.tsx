@@ -10,7 +10,9 @@ import {
   BranchesOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuthStore } from "../stores/auth_store";
 
 const { Sider } = Layout;
 const { Text } = Typography;
@@ -19,61 +21,65 @@ interface SidebarProps {
   collapsed?: boolean;
 }
 
+interface AppMenuItem {
+  key?: string;
+  icon?: React.ReactNode;
+  label?: string;
+  roles?: string[];
+  type?: "divider";
+  children?: AppMenuItem[];
+}
+
+type MenuItem = Required<MenuProps>["items"][number];
+
 const Sidebar = ({ collapsed = false }: SidebarProps) => {
   const [selectedKey, setSelectedKey] = useState("dashboard");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const user = useAuthStore((state) => state.loggedInUser);
 
-  const menuItems: MenuProps["items"] = [
+  // Update selected key based on current location
+  useEffect(() => {
+    const routeToKeyMap: Record<string, string> = {
+      "/admin": "dashboard",
+      "/admin/users-management": "users",
+      "/admin/bus-operators-management": "bus-operators-management",
+    };
+    const currentKey = routeToKeyMap[location.pathname] || "dashboard";
+    setSelectedKey(currentKey);
+  }, [location.pathname]);
+
+  const menuItems: AppMenuItem[] = [
     {
       key: "dashboard",
       icon: <DashboardOutlined />,
       label: "Bảng điều khiển",
+      roles: ["ADMIN", "EMPLOYEE"],
     },
     {
       type: "divider",
     },
     {
-      key: "user-management",
+      key: "users",
       icon: <UserOutlined />,
       label: "Quản lý Người dùng",
-      children: [
-        {
-          key: "add-user",
-          label: "Thêm người dùng",
-        },
-        {
-          key: "edit-user",
-          label: "Sửa người dùng",
-        },
-        {
-          key: "search-user",
-          label: "Tìm kiếm người dùng",
-        },
-        {
-          key: "delete-user",
-          label: "Xóa người dùng",
-        },
-      ],
+      roles: ["ADMIN"],
     },
     {
-      key: "vehicle-management",
+      key: "bus-operators",
       icon: <TruckOutlined />,
       label: "Quản lý Nhà xe",
+      roles: ["ADMIN"],
       children: [
         {
-          key: "add-vehicle",
-          label: "Thêm nhà xe",
+          key: "bus-operators-management",
+          label: "Danh sách Nhà xe",
+          roles: ["ADMIN"],
         },
         {
-          key: "edit-vehicle",
-          label: "Sửa nhà xe",
-        },
-        {
-          key: "search-vehicle",
-          label: "Tìm kiếm nhà xe",
-        },
-        {
-          key: "delete-vehicle",
-          label: "Xóa nhà xe",
+          key: "list-bus-operator",
+          label: "Hợp đồng",
+          roles: ["ADMIN"],
         },
       ],
     },
@@ -81,41 +87,27 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
       key: "route-management",
       icon: <BranchesOutlined />,
       label: "Quản lý Tuyến xe",
-      children: [
-        {
-          key: "add-route",
-          label: "Thêm tuyến xe",
-        },
-        {
-          key: "edit-route",
-          label: "Sửa tuyến xe",
-        },
-        {
-          key: "search-route",
-          label: "Tìm kiếm tuyến xe",
-        },
-        {
-          key: "delete-route",
-          label: "Xóa tuyến xe",
-        },
-      ],
     },
     {
       key: "revenue-management",
       icon: <DollarCircleOutlined />,
       label: "Theo dõi Doanh thu",
+      roles: ["ADMIN"],
       children: [
         {
           key: "revenue-reports",
           label: "Báo cáo doanh thu",
+          roles: ["ADMIN"],
         },
         {
           key: "revenue-analytics",
           label: "Phân tích doanh thu",
+          roles: ["ADMIN"],
         },
         {
           key: "revenue-export",
           label: "Xuất báo cáo",
+          roles: ["ADMIN"],
         },
       ],
     },
@@ -123,10 +115,12 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
       key: "role-management",
       icon: <SafetyCertificateOutlined />,
       label: "Phân quyền Vai trò",
+      roles: ["ADMIN"],
       children: [
         {
           key: "assign-roles",
           label: "Phân quyền",
+          roles: ["ADMIN"],
         },
         {
           key: "manage-roles",
@@ -141,6 +135,7 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
     {
       key: "log-management",
       icon: <FileTextOutlined />,
+      roles: ["EMPLOYEE"],
       label: "Quản lý Logs",
       children: [
         {
@@ -167,10 +162,59 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
     },
   ];
 
+  const getFilteredMenuItems = (): MenuItem[] => {
+    return menuItems
+      .filter(
+        (item) => item.roles?.includes(user?.role as string) || !item.roles
+      )
+      .map((item): MenuItem => {
+        if (item.type === "divider") {
+          return { type: "divider" };
+        }
+        if (item.children) {
+          return {
+            key: item.key!,
+            icon: item.icon,
+            label: item.label,
+            children: item.children
+              .filter(
+                (child) =>
+                  child.roles?.includes(user?.role as string) || !child.roles
+              )
+              .map((child) => ({
+                key: child.key!,
+                icon: child.icon,
+                label: child.label,
+              })),
+          };
+        }
+        return {
+          key: item.key!,
+          icon: item.icon,
+          label: item.label,
+        };
+      });
+  };
+
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedKey(key);
-    // Handle navigation logic here
-    console.log("Navigate to:", key);
+
+    // Navigation logic based on menu key
+    switch (key) {
+      case "dashboard":
+        navigate("/admin");
+        break;
+      case "users":
+        navigate("/admin/users-management");
+        break;
+      case "bus-operators-management":
+        navigate("/admin/bus-operators-management");
+        break;
+      // Add more cases for other menu items as needed
+      default:
+        console.log("Navigate to:", key);
+        break;
+    }
   };
 
   return (
@@ -240,7 +284,7 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
           borderRight: 0,
           paddingTop: "8px",
         }}
-        items={menuItems}
+        items={getFilteredMenuItems()}
         theme="light"
       />
     </Sider>
