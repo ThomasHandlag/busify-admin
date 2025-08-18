@@ -42,6 +42,7 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
   const routeToKeyMap: Record<string, string> = {
     "/admin": "dashboard",
     "/admin/users-management": "users",
+    "/admin/bus-operators-management": "bus-operators-management",
   };
 
   // Update selected key based on current location
@@ -67,10 +68,22 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
       roles: ["ADMIN"],
     },
     {
-      key: "vehicle-management",
+      key: "bus-operators",
       icon: <TruckOutlined />,
       label: "Quản lý Nhà xe",
       roles: ["ADMIN"],
+      children: [
+        {
+          key: "bus-operators-management",
+          label: "Danh sách Nhà xe",
+          roles: ["ADMIN"],
+        },
+        {
+          key: "list-bus-operator",
+          label: "Hợp đồng",
+          roles: ["ADMIN"],
+        },
+      ],
     },
     {
       key: "route-management",
@@ -194,6 +207,9 @@ const Sidebar = ({ collapsed = false }: SidebarProps) => {
         break;
       case "users":
         navigate("/admin/users-management");
+        break;
+      case "bus-operators-management":
+        navigate("/admin/bus-operators-management");
         break;
       // Add more cases for other menu items as needed
       default:
