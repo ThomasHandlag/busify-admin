@@ -55,6 +55,12 @@ export interface ComplaintDetailResponse {
   result: ComplaintDetail;
 }
 
+export interface ComplaintDetailListResponse {
+  code: number;
+  message: string;
+  result: ComplaintDetail[];
+}
+
 export interface UpdateComplaintParams {
   title?: string;
   description?: string;
@@ -99,7 +105,7 @@ export const updateComplaint = async (
 
 export const getComplaintByAgent = async (
   agentId: number
-): Promise<ComplaintResponse> => {
+): Promise<ComplaintDetailListResponse> => {
   try {
     const response = await apiClient.get(`api/complaints/agent/${agentId}`);
     return response.data;
