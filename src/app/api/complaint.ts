@@ -96,3 +96,14 @@ export const updateComplaint = async (
     throw new Error("Không thể cập nhật khiếu nại" + error);
   }
 };
+
+export const getComplaintByAgent = async (
+  agentId: number
+): Promise<ComplaintResponse> => {
+  try {
+    const response = await apiClient.get(`api/complaints/agent/${agentId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Không thể lấy danh sách khiếu nại theo nhân viên" + error);
+  }
+};
