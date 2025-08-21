@@ -65,7 +65,13 @@ export const useAuthStore = create<AuthState>()(
                 false,
                 { type: "@AUTH/LOGIN/SUCCESS" }
               );
-              navigate("/admin");
+              // check role to navigate
+              if (response?.loggedInUser.role === "CUSTOMER_SERVICE") {
+                navigate("/customer-service");
+              }
+              if (response?.loggedInUser.role === "ADMIN") {
+                navigate("/admin");
+              }
             } catch (error) {
               console.error("Login error:", error);
               set(
