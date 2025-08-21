@@ -7,18 +7,12 @@ import {
   EditOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type { Ticket } from "../types";
-import {
-  getTypeColor,
-  getTypeText,
-  getStatusColor,
-  getStatusText,
-  getPriorityColor,
-} from "../utils/ticketUtils";
+import { getStatusColor, getStatusText } from "../utils/ticketUtils"; // Giữ lại các hàm tiện ích cho status
+import type { ComplaintDetail } from "../../../app/api/complaint";
 
 interface TicketsListProps {
-  tickets: Ticket[];
-  onTicketAction: (action: string, ticketId: string) => void;
+  tickets: ComplaintDetail[];
+  onTicketAction: (action: string, ticketId: number) => void;
 }
 
 export const TicketsList: React.FC<TicketsListProps> = ({
@@ -112,16 +106,9 @@ export const TicketsList: React.FC<TicketsListProps> = ({
                         color: "#262626",
                       }}
                     >
-                      {item.subject}
+                      {item.title}{" "}
+                      {/* Thay thế: item.subject -> item.title */}
                     </Typography.Text>
-                    <div
-                      style={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: "50%",
-                        backgroundColor: getPriorityColor(item.priority),
-                      }}
-                    />
                   </div>
 
                   <div
@@ -132,18 +119,6 @@ export const TicketsList: React.FC<TicketsListProps> = ({
                       flexWrap: "wrap",
                     }}
                   >
-                    <Tag
-                      color={getTypeColor(item.type)}
-                      style={{
-                        margin: 0,
-                        fontSize: 11,
-                        borderRadius: 4,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {getTypeText(item.type)}
-                    </Tag>
-
                     <Tag
                       color={getStatusColor(item.status)}
                       style={{
@@ -222,7 +197,8 @@ export const TicketsList: React.FC<TicketsListProps> = ({
                     fontWeight: 600,
                   }}
                 >
-                  {item.customerName.split(" ").slice(-1)[0].charAt(0)}
+                  {/* Thay thế: Truy cập tên khách hàng qua object customer */}
+                  {item.customer.customerName.split(" ").slice(-1)[0].charAt(0)}
                 </Avatar>
 
                 <div style={{ flex: 1 }}>
@@ -234,7 +210,7 @@ export const TicketsList: React.FC<TicketsListProps> = ({
                       display: "block",
                     }}
                   >
-                    {item.customerName}
+                    {item.customer.customerName}
                   </Typography.Text>
                   <Typography.Text
                     style={{
@@ -246,30 +222,8 @@ export const TicketsList: React.FC<TicketsListProps> = ({
                     }}
                   >
                     <PhoneOutlined style={{ fontSize: 11 }} />
-                    {item.phone}
-                  </Typography.Text>
-                </div>
-
-                <div style={{ textAlign: "right" }}>
-                  <Typography.Text
-                    style={{
-                      fontSize: 11,
-                      color: "#999",
-                    }}
-                  >
-                    Hạn xử lý
-                  </Typography.Text>
-                  <Typography.Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: dayjs().isAfter(dayjs(item.dueAt))
-                        ? "#ff4d4f"
-                        : "#52c41a",
-                      display: "block",
-                    }}
-                  >
-                    {dayjs(item.dueAt).format("DD/MM HH:mm")}
+                    {/* Thay thế: Truy cập sđt qua object customer */}
+                    {item.customer.customerPhone}
                   </Typography.Text>
                 </div>
               </div>
@@ -300,51 +254,10 @@ export const TicketsList: React.FC<TicketsListProps> = ({
                   borderTop: "1px solid #f5f5f5",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 60,
-                      height: 4,
-                      backgroundColor: "#f5f5f5",
-                      borderRadius: 2,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${
-                          item.priority === "urgent"
-                            ? 100
-                            : item.priority === "high"
-                            ? 75
-                            : item.priority === "medium"
-                            ? 50
-                            : 25
-                        }%`,
-                        height: "100%",
-                        backgroundColor: getPriorityColor(item.priority),
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </div>
-                  <Typography.Text
-                    style={{
-                      fontSize: 10,
-                      color: "#999",
-                      textTransform: "uppercase",
-                      fontWeight: 600,
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    {item.priority}
-                  </Typography.Text>
-                </div>
+                {/* Thay thế: Hiển thị booking code thay cho priority */}
+                <Typography.Text style={{ fontSize: 12, color: "#8c8c8c" }}>
+                  Mã đặt chỗ: <strong>{item.booking.bookingCode}</strong>
+                </Typography.Text>
 
                 <Space size="small">
                   <Button

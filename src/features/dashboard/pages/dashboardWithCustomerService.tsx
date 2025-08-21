@@ -1,92 +1,66 @@
-import React, { useState } from "react";
-import { Col, Row, message } from "antd";
+import React, { useState, useEffect, useCallback } from "react";
+import { Col, Row, message, Spin, Button } from "antd"; // Thêm Spin, Button, message
+import { ExclamationCircleOutlined } from "@ant-design/icons"; // Thêm ExclamationCircleOutlined
 import dayjs from "dayjs";
-import { DashboardHeader } from "../components/DashboardHeader";
 import { MetricsCard } from "../components/MetricsCard";
 import { TicketsList } from "../components/TicketsList";
 import { DashboardSidebar } from "../components/DashboardSidebar";
-import type { Ticket, Notification, ChatSession } from "../types";
+import type { Notification, ChatSession } from "../types";
+// Import các hàm API và interface ComplaintDetail
+import {
+  getComplaintByAgent,
+  type ComplaintDetail,
+} from "../../../app/api/complaint"; // Điều chỉnh đường dẫn nếu cần
+import { DashboardHeader } from "../components/DashboardHeader";
+import { useAuthStore } from "../../../stores/auth_store";
 
 export const DashboardWithCustomerService = () => {
+  const { loggedInUser } = useAuthStore();
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchText, setSearchText] = useState<string>("");
 
-  // Mock data
-  const mockTickets: Ticket[] = [
-    {
-      id: "TK001",
-      customerName: "Nguyễn Văn An",
-      phone: "0912345678",
-      email: "an.nguyen@email.com",
-      type: "cancel",
-      status: "open",
-      priority: "high",
-      subject: "Yêu cầu hủy vé do thay đổi lịch trình",
-      description:
-        "Khách hàng cần hủy vé chuyến đi ngày 15/12 do có việc đột xuất",
-      createdAt: "2024-12-10T08:30:00",
-      updatedAt: "2024-12-10T08:30:00",
-      dueAt: "2024-12-10T17:30:00",
-    },
-    {
-      id: "TK002",
-      customerName: "Trần Thị Bình",
-      phone: "0987654321",
-      email: "binh.tran@email.com",
-      type: "refund",
-      status: "in_progress",
-      priority: "medium",
-      subject: "Hoàn tiền sau khi hủy chuyến",
-      description:
-        "Chuyến xe bị hủy do thời tiết, khách hàng yêu cầu hoàn tiền",
-      createdAt: "2024-12-09T14:20:00",
-      updatedAt: "2024-12-10T09:15:00",
-      dueAt: "2024-12-11T14:20:00",
-    },
-    {
-      id: "TK003",
-      customerName: "Lê Minh Cường",
-      phone: "0923456789",
-      email: "cuong.le@email.com",
-      type: "complaint",
-      status: "open",
-      priority: "urgent",
-      subject: "Khiếu nại về chất lượng dịch vụ",
-      description: "Xe đến muộn 2 tiếng, tài xế thái độ không tốt",
-      createdAt: "2024-12-10T07:45:00",
-      updatedAt: "2024-12-10T07:45:00",
-      dueAt: "2024-12-10T15:45:00",
-    },
-    {
-      id: "TK004",
-      customerName: "Phạm Thị Dung",
-      phone: "0934567890",
-      email: "dung.pham@email.com",
-      type: "change",
-      status: "resolved",
-      priority: "low",
-      subject: "Đổi vé sang chuyến khác",
-      description: "Khách hàng muốn đổi từ chuyến 8:00 sang chuyến 10:00",
-      createdAt: "2024-12-09T16:30:00",
-      updatedAt: "2024-12-10T10:00:00",
-      dueAt: "2024-12-11T16:30:00",
-    },
-    {
-      id: "TK005",
-      customerName: "Võ Văn Em",
-      phone: "0945678901",
-      email: "em.vo@email.com",
-      type: "other",
-      status: "closed",
-      priority: "low",
-      subject: "Hỏi thông tin lịch trình",
-      description: "Khách hàng muốn biết thông tin chi tiết về điểm đón",
-      createdAt: "2024-12-08T11:15:00",
-      updatedAt: "2024-12-09T09:30:00",
-      dueAt: "2024-12-09T11:15:00",
-    },
-  ];
+  // States để lưu trữ dữ liệu từ API
+  const [complaints, setComplaints] = useState<ComplaintDetail[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Hàm fetch data
+  const fetchComplaints = useCallback(async () => {
+    setLoading(true);
+    setError(null); // Reset lỗi mỗi khi fetch
+    try {
+      const email = loggedInUser?.email;
+      if (!email) {
+        throw new Error("Không tìm thấy email của người dùng đăng nhập.");
+      }
+      const response = await getComplaintByAgent(email);
+
+      if (response.code === 200) {
+        setComplaints(response.result);
+      } else {
+        // Xử lý lỗi từ response API
+        const errorMessage =
+          response.message || "Không thể tải danh sách khiếu nại.";
+        setError(errorMessage);
+        message.error(errorMessage);
+      }
+    } catch (err: any) {
+      // Xử lý lỗi mạng hoặc lỗi không xác định
+      const errorMessage =
+        err.message || "Đã xảy ra lỗi không mong muốn khi tải dữ liệu.";
+      setError(errorMessage);
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // [] đảm bảo hàm này chỉ được tạo một lần
+
+  // Gọi fetchComplaints khi component mount
+  useEffect(() => {
+    fetchComplaints();
+  }, [fetchComplaints]); // Dependency array bao gồm fetchComplaints (do useCallback)
+
+  // Mock data cho Notifications và ChatSessions (giữ nguyên nếu bạn muốn)
   const mockNotifications: Notification[] = [
     {
       id: "N001",
@@ -138,41 +112,48 @@ export const DashboardWithCustomerService = () => {
     },
   ];
 
-  // Filter tickets based on status and search
-  const filteredTickets = mockTickets.filter((ticket) => {
+  // Filter tickets based on status and search, sử dụng `complaints` thay vì `mockTickets`
+  const filteredTickets = complaints.filter((ticket) => {
     const matchesStatus =
       selectedStatus === "all" || ticket.status === selectedStatus;
     const matchesSearch =
       searchText === "" ||
-      ticket.customerName.toLowerCase().includes(searchText.toLowerCase()) ||
-      ticket.subject.toLowerCase().includes(searchText.toLowerCase()) ||
-      ticket.id.toLowerCase().includes(searchText.toLowerCase());
+      ticket.customer.customerName
+        .toLowerCase()
+        .includes(searchText.toLowerCase()) ||
+      ticket.title.toLowerCase().includes(searchText.toLowerCase()) ||
+      ticket.id.toString().toLowerCase().includes(searchText.toLowerCase()); // id là number, chuyển sang string để tìm kiếm
     return matchesStatus && matchesSearch;
   });
 
-  // Calculate statistics
+  // Calculate statistics, sử dụng `complaints`
   const stats = {
-    totalOpen: mockTickets.filter((t) => t.status === "open").length,
-    inProgress: mockTickets.filter((t) => t.status === "in_progress").length,
-    resolvedToday: mockTickets.filter(
+    totalOpen: complaints.filter((t) => t.status === "open").length,
+    inProgress: complaints.filter((t) => t.status === "in_progress").length,
+    // Cập nhật logic resolvedToday và overdue nếu ComplaintDetail có trường dueAt
+    // Hiện tại ComplaintDetail không có dueAt, nên phần này cần được xem xét lại.
+    // Tạm thời để nguyên logic cũ với updatedAt cho resolvedToday, và loại bỏ overdue nếu không có dueAt.
+    resolvedToday: complaints.filter(
       (t) =>
         t.status === "resolved" && dayjs(t.updatedAt).isSame(dayjs(), "day")
     ).length,
-    overdue: mockTickets.filter(
-      (t) =>
-        (t.status === "open" || t.status === "in_progress") &&
-        dayjs().isAfter(dayjs(t.dueAt))
-    ).length,
-    avgResponseTime: "2.5",
-    customerSatisfaction: 4.2,
+    // Do ComplaintDetail không có dueAt, chúng ta không thể tính toán overdue dựa trên nó.
+    // Nếu bạn muốn tính overdue, cần thêm trường dueAt vào ComplaintDetail ở backend.
+    // Tạm thời, để giá trị 0 hoặc loại bỏ nếu không áp dụng.
+    overdue: 0, // Giá trị tạm thời hoặc loại bỏ
+    avgResponseTime: "2.5", // Giữ nguyên giá trị mock
+    customerSatisfaction: 4.2, // Giữ nguyên giá trị mock
   };
 
-  const handleTicketAction = (action: string, ticketId: string) => {
+  const handleTicketAction = (action: string, ticketId: number) => {
+    // id là number
     message.success(`${action} ticket ${ticketId}`);
+    // Sau khi xử lý action (ví dụ: cập nhật ticket), bạn có thể fetch lại data
+    // fetchComplaints(); // Nếu cần refresh danh sách sau mỗi hành động
   };
 
   const handleRefresh = () => {
-    // Add refresh logic here
+    fetchComplaints(); // Gọi lại hàm fetch data khi refresh
   };
 
   // Modern minimal styles
@@ -196,10 +177,35 @@ export const DashboardWithCustomerService = () => {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
-          <TicketsList
-            tickets={filteredTickets}
-            onTicketAction={handleTicketAction}
-          />
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <Spin size="large" />
+              <p style={{ marginTop: 16, color: "#999" }}>
+                Đang tải yêu cầu...
+              </p>
+            </div>
+          ) : error ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "40px 20px",
+                color: "#ff4d4f",
+              }}
+            >
+              <ExclamationCircleOutlined
+                style={{ fontSize: 24, marginBottom: 8 }}
+              />
+              <div>Lỗi: {error}</div>
+              <Button onClick={fetchComplaints} style={{ marginTop: 16 }}>
+                Thử lại
+              </Button>
+            </div>
+          ) : (
+            <TicketsList
+              tickets={filteredTickets}
+              onTicketAction={handleTicketAction}
+            />
+          )}
         </Col>
 
         <Col xs={24} lg={8}>
@@ -213,5 +219,3 @@ export const DashboardWithCustomerService = () => {
     </div>
   );
 };
-
-  
