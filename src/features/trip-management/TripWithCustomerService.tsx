@@ -43,7 +43,11 @@ import type { TableProps } from "antd";
 import dayjs from "dayjs";
 import TripDetailModal from "./components/TripDetailModal";
 import type { Trip } from "../../app/api/trip";
-import { getAllTrips, filterTrips, type TripFilterParams } from "../../app/api/trip";
+import {
+  getAllTrips,
+  filterTrips,
+  type TripFilterParams,
+} from "../../app/api/trip";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -100,21 +104,21 @@ const TripWithCustomerServicePage: React.FC = () => {
     try {
       // Prepare filter params
       const filterParams: TripFilterParams = {};
-      
+
       if (departureDate) {
         filterParams.departureDate = dayjs(departureDate).format("YYYY-MM-DD");
       }
-      
+
       if (departureTime) {
         filterParams.untilTime = dayjs(departureTime).format("HH:mm");
       }
-      
+
       if (minSeats) {
         filterParams.availableSeats = parseInt(minSeats);
       }
 
       const response = await filterTrips(filterParams);
-      
+
       if (response.code === 200) {
         let results = response.result;
 
@@ -578,6 +582,5 @@ const TripWithCustomerServicePage: React.FC = () => {
     </div>
   );
 };
-
 
 export default TripWithCustomerServicePage;
