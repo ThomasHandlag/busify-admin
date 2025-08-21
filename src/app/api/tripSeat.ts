@@ -19,6 +19,6 @@ export interface TripSeatsResponse {
 export const getTripSeats = async (
   tripId: number
 ): Promise<TripSeatsResponse> => {
-  const response = await apiClient.get(`/trips/${tripId}/seats`);
+  const response = await apiClient.get(`/api/trip-seats/${tripId}`);
   return response.data;
 };
