@@ -107,3 +107,13 @@ export const getTicketByCode = async (
     throw new Error("Không thể lấy thông tin chi tiết vé" + error);
   }
 };
+
+// delete ticket
+export const deleteTicket = async (ticketCode: string): Promise<boolean> => {
+  try {
+    const response = await apiClient.delete(`/api/tickets/${ticketCode}`);
+    return response.status === 200;
+  } catch (error) {
+    throw new Error("Không thể xóa vé" + error);
+  }
+};

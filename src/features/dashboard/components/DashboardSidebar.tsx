@@ -8,22 +8,18 @@ import {
   Badge,
   Button,
   Tag,
-  Alert,
 } from "antd";
-import { UserOutlined, BellOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
-import type { ChatSession, Notification } from "../types";
+import { UserOutlined } from "@ant-design/icons";
+import type { ChatSession } from "../types";
 
 interface DashboardSidebarProps {
   customerSatisfaction: number;
   chatSessions: ChatSession[];
-  notifications: Notification[];
 }
 
 export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   customerSatisfaction,
   chatSessions,
-  notifications,
 }) => {
   const metricCardStyle: React.CSSProperties = {
     borderRadius: 12,
@@ -111,35 +107,6 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                     ellipsis={{ tooltip: item.lastMessage }}
                   >
                     {item.lastMessage}
-                  </Typography.Text>
-                }
-              />
-            </List.Item>
-          )}
-        />
-      </Card>
-
-      <Card
-        style={{ ...metricCardStyle }}
-        title={
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <BellOutlined /> Thông báo
-          </div>
-        }
-      >
-        <List
-          size="small"
-          dataSource={notifications}
-          renderItem={(item) => (
-            <List.Item>
-              <Alert
-                message={item.message}
-                type={item.severity}
-                showIcon
-                style={{ width: "100%", padding: 8 }}
-                description={
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {dayjs(item.time).format("HH:mm DD/MM")}
                   </Typography.Text>
                 }
               />

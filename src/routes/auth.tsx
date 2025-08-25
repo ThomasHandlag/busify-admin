@@ -11,7 +11,7 @@ import ReviewsWithCustomerServicePage from "../features/reviews-management/pages
 import BookingsWithCustomerService from "../features/bookings-mangement/pages/BookingsWithCustomerService";
 import { DashboardWithCustomerService } from "../features/dashboard/pages/dashboardWithCustomerService";
 import Dashboard from "../features/dashboard/pages/dashboard";
-import { ChatWithCustomerServicePage } from "../features/chat/ChatWithCustomerServicePage";
+import { ChatWithCustomerServicePage } from "../features/chat/chatWithCustomerServicePage";
 
 export function withRole(element: React.ReactNode, roles: string[]) {
   return <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
