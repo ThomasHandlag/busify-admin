@@ -20,8 +20,13 @@ import {
   EnvironmentOutlined,
   PrinterOutlined,
   MailOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
-import { getTicketByCode, type TicketDetail } from "../../../app/api/ticket";
+import {
+  getTicketByCode,
+  type TicketDetail,
+  deleteTicket,
+} from "../../../app/api/ticket";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
@@ -41,12 +46,14 @@ interface TicketDetailModalProps {
   ticket: Ticket | null;
   visible: boolean;
   onClose: () => void;
+  onDelete?: (ticketCode: string) => void;
 }
 
 const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   ticket,
   visible,
   onClose,
+  onDelete,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +120,32 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
   const handleSendEmail = () => {
     message.success("Đã gửi thông tin vé qua email");
+  };
+
+  const handleDeleteTicket = () => {
+    if (!ticket) return;
+
+    Modal.confirm({
+      title: "Xác nhận hủy vé",
+      content: `Bạn có chắc chắn muốn hủy vé với mã ${ticket.ticketCode}? Hành động này không thể hoàn tác.`,
+      okText: "Xác nhận hủy",
+      okType: "danger",
+      cancelText: "Không",
+      onOk: async () => {
+        try {
+          await deleteTicket(ticket.ticketCode);
+          // Update local status so UI reflects cancellation immediately
+          setTicketDetail((prev) =>
+            prev ? { ...prev, status: "cancelled" } : prev
+          );
+          message.success("Hủy vé thành công");
+          onDelete?.(ticket.ticketCode);
+          onClose();
+        } catch (error) {
+          message.error("Không thể hủy vé. Vui lòng thử lại." + error);
+        }
+      },
+    });
   };
 
   const renderContent = () => {
@@ -289,6 +322,15 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
       onCancel={onClose}
       width={800}
       footer={[
+        <Button
+          key="delete"
+          danger
+          type="primary"
+          icon={<DeleteOutlined />}
+          onClick={handleDeleteTicket}
+        >
+          Hủy vé
+        </Button>,
         <Button key="email" icon={<MailOutlined />} onClick={handleSendEmail}>
           Gửi email
         </Button>,

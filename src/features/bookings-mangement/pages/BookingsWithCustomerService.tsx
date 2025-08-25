@@ -175,6 +175,31 @@ const BookingsWithCustomerService: React.FC = () => {
     }
   };
 
+  const handleDeleteBooking = async () => {
+    // Reload danh sách từ server để đảm bảo dữ liệu mới nhất
+    try {
+      const formValues = form.getFieldsValue();
+      const { bookingCode, routeName, status, fromDate, toDate } = formValues;
+
+      const searchParams: SearchBookingParams = {
+        page: pagination.current,
+        size: pagination.pageSize,
+      };
+
+      if (bookingCode) searchParams.bookingCode = bookingCode;
+      if (routeName) searchParams.route = routeName;
+      if (status) searchParams.status = status;
+      if (fromDate)
+        searchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
+      if (toDate) searchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
+
+      await loadBookings(searchParams);
+    } catch (error) {
+      console.error("Error refreshing bookings list:", error);
+      // Không hiển thị error message để không làm phiền user
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -534,6 +559,7 @@ const BookingsWithCustomerService: React.FC = () => {
           setSelectedBooking(null);
         }}
         onUpdate={handleUpdateBooking}
+        onDelete={handleDeleteBooking}
       />
     </div>
   );

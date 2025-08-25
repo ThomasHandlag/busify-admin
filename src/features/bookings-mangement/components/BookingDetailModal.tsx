@@ -28,11 +28,13 @@ import {
   SaveOutlined,
   CreditCardOutlined,
   HomeOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
   getBookingByCode,
   updateBooking,
+  deleteBooking,
   type Booking,
   type BookingDetailAPI,
   type UpdateBookingParams,
@@ -45,6 +47,7 @@ interface BookingDetailModalProps {
   visible: boolean;
   onClose: () => void;
   onUpdate: (booking: Booking) => void;
+  onDelete?: (bookingCode: string) => void;
 }
 
 const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
@@ -52,6 +55,7 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   visible,
   onClose,
   onUpdate,
+  onDelete,
 }) => {
   const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
@@ -150,6 +154,34 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     setIsEditing(true);
   };
 
+  const handleDeleteTicket = () => {
+    if (!booking) return;
+
+    Modal.confirm({
+      title: "Xác nhận hủy đặt vé",
+      content: `Bạn có chắc chắn muốn hủy đặt vé với mã ${booking.booking_code}? Hành động này không thể hoàn tác.`,
+      okText: "Xác nhận hủy",
+      okType: "danger",
+      cancelText: "Không",
+      onOk: async () => {
+        try {
+          await deleteBooking(booking.booking_code);
+          // Update local status so UI reflects cancellation immediately
+          setBookingDetail((prev) =>
+            prev ? { ...prev, status: "cancelled" } : prev
+          );
+          message.success("Hủy đặt vé thành công");
+          onDelete?.(booking.booking_code);
+          // optionally keep modal open for user to see updated status briefly,
+          // then close
+          onClose();
+        } catch (error) {
+          message.error("Không thể hủy đặt vé. Vui lòng thử lại." + error);
+        }
+      },
+    });
+  };
+
   const handleCancel = () => {
     setIsEditing(false);
     if (bookingDetail) {
@@ -239,6 +271,15 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           </Space>
         ) : (
           <Space key="view-actions">
+            <Button
+              key="delete"
+              danger
+              type="primary"
+              icon={<DeleteOutlined />}
+              onClick={handleDeleteTicket}
+            >
+              Hủy vé
+            </Button>
             <Button icon={<EditOutlined />} onClick={handleEdit}>
               Chỉnh sửa
             </Button>
