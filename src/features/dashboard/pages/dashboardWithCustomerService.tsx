@@ -12,10 +12,8 @@ import {
   type ComplaintDetail,
 } from "../../../app/api/complaint"; // Điều chỉnh đường dẫn nếu cần
 import { DashboardHeader } from "../components/DashboardHeader";
-import { useAuthStore } from "../../../stores/auth_store";
 
 export const DashboardWithCustomerService = () => {
-  const { loggedInUser } = useAuthStore();
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchText, setSearchText] = useState<string>("");
 
@@ -29,11 +27,7 @@ export const DashboardWithCustomerService = () => {
     setLoading(true);
     setError(null); // Reset lỗi mỗi khi fetch
     try {
-      const email = loggedInUser?.email;
-      if (!email) {
-        throw new Error("Không tìm thấy email của người dùng đăng nhập.");
-      }
-      const response = await getComplaintByAgent(email);
+      const response = await getComplaintByAgent();
 
       if (response.code === 200) {
         setComplaints(response.result);
