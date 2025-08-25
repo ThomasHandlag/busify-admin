@@ -13,7 +13,6 @@ const ProtectedRoute = ({
   const user = useAuthStore((state) => state.loggedInUser);
   const navigate = useNavigate();
 
-  const handleRetry = () => console.log("retry...");
   const handleLogin = () => navigate("/login");
   const handleRequest = () => console.log("request access...");
   if (!user || !allowedRoles.includes(user.role)) {
@@ -26,7 +25,6 @@ const ProtectedRoute = ({
             Vui lòng đăng nhập đúng tài khoản hoặc xin cấp quyền.
           </>
         }
-        onRetry={handleRetry}
         onLogin={handleLogin}
         onRequestAccess={handleRequest}
         homeHref="/"

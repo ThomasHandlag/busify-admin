@@ -6,8 +6,6 @@ import {
   DashboardOutlined,
   TruckOutlined,
   SafetyCertificateOutlined,
-  BranchesOutlined,
-  SolutionOutlined,
   StarOutlined,
   FrownOutlined,
   MessageOutlined,
@@ -39,49 +37,20 @@ export const menuItems: AppMenuItem[] = [
     roles: ["ADMIN"],
   },
   {
-    key: "vehicle-management",
+    key: "bus-operators",
     icon: <TruckOutlined />,
     label: "Quản lý Nhà xe",
     roles: ["ADMIN"],
-  },
-  {
-    key: "route-management",
-    icon: <BranchesOutlined />,
-    label: "Quản lý Tuyến xe",
-    roles: ["ADMIN"],
-  },
-  {
-    key: "customer-service",
-    icon: <SolutionOutlined />,
-    label: "Chăm sóc khách hàng",
-    roles: ["CUSTOMER_SERVICE"],
     children: [
       {
-        key: "tickets-customer-service",
-        label: "Quản lý vé",
-        roles: ["CUSTOMER_SERVICE"],
+        key: "bus-operators-management",
+        label: "Danh sách Nhà xe",
+        roles: ["ADMIN"],
       },
       {
-        key: "bookings-customer-service",
-        label: "Quản lý booking",
-        roles: ["CUSTOMER_SERVICE"],
-      },
-      {
-        key: "trips-customer-service",
-        label: "Tra cứu chuyến đi",
-        roles: ["CUSTOMER_SERVICE"],
-      },
-      {
-        key: "complaints-customer-service",
-        label: "Quản lý khiếu nại",
-        icon: <FrownOutlined />,
-        roles: ["CUSTOMER_SERVICE"],
-      },
-      {
-        key: "reviews-customer-service",
-        label: "Quản lý đánh giá",
-        icon: <StarOutlined />,
-        roles: ["CUSTOMER_SERVICE"],
+        key: "list-bus-operator",
+        label: "Hợp đồng",
+        roles: ["ADMIN"],
       },
       {
         key: "chat-customer-service",
@@ -91,6 +60,35 @@ export const menuItems: AppMenuItem[] = [
       },
     ],
   },
+
+  {
+    key: "tickets-customer-service",
+    label: "Quản lý vé",
+    roles: ["CUSTOMER_SERVICE", "ADMIN"],
+  },
+  {
+    key: "bookings-customer-service",
+    label: "Quản lý booking",
+    roles: ["CUSTOMER_SERVICE", "ADMIN"],
+  },
+  {
+    key: "trips-customer-service",
+    label: "Tra cứu chuyến đi",
+    roles: ["CUSTOMER_SERVICE"],
+  },
+  {
+    key: "complaints-customer-service",
+    label: "Quản lý khiếu nại",
+    icon: <FrownOutlined />,
+    roles: ["CUSTOMER_SERVICE"],
+  },
+  {
+    key: "reviews-customer-service",
+    label: "Quản lý đánh giá",
+    icon: <StarOutlined />,
+    roles: ["CUSTOMER_SERVICE"],
+  },
+
   {
     key: "revenue-management",
     icon: <DollarCircleOutlined />,
@@ -105,11 +103,6 @@ export const menuItems: AppMenuItem[] = [
       {
         key: "revenue-analytics",
         label: "Phân tích doanh thu",
-        roles: ["ADMIN"],
-      },
-      {
-        key: "revenue-export",
-        label: "Xuất báo cáo",
         roles: ["ADMIN"],
       },
     ],
@@ -171,6 +164,13 @@ export const menuItems: AppMenuItem[] = [
 export const routeToKeyMap: Record<string, string> = {
   "/admin": "dashboard",
   "/admin/users-management": "users",
+  "/admin/bus-operators-management": "bus-operators-management",
+  "/admin/bus-operators": "bus-operators",
+  "/admin/contracts": "list-bus-operator",
+  "/admin/revenue-reports": "revenue-reports",
+  "/admin/revenue-analytics": "revenue-analytics",
+  "/admin/tickets": "tickets-customer-service",
+  "/admin/bookings": "bookings-customer-service",
   "/customer-service": "dashboard-customer-service",
   "/customer-service/tickets": "tickets-customer-service",
   "/customer-service/bookings": "bookings-customer-service",

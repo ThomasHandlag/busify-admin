@@ -39,6 +39,7 @@ import {
   type SearchBookingParams,
   type Booking,
 } from "../../../app/api/booking";
+import ProtectedComponent from "../../../components/ProtectedCompoment";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -348,13 +349,15 @@ const BookingsWithCustomerService: React.FC = () => {
               onClick={() => handleViewDetail(record)}
             />
           </Tooltip>
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleViewDetail(record)}
-            />
-          </Tooltip>
+          <ProtectedComponent allowedRoles={["CUSTOMER_SERVICE"]}>
+            <Tooltip title="Chỉnh sửa">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => handleViewDetail(record)}
+              />
+            </Tooltip>
+          </ProtectedComponent>
         </Space>
       ),
       width: 100,

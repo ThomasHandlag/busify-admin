@@ -2,6 +2,12 @@ import type { RouteObject } from "react-router";
 import DashboardLayout from "../app/layouts/DashboardLayout";
 import UserManagement from "../features/user-management/user";
 import ProtectedRoute from "../components/ProtectedRoute";
+import BusOperatorManagement from "../features/bus-operator-management/bus-operator";
+import ContractManagement from "../features/contract-management/contracts";
+import RevenueReports from "../features/revenue-management/revenue-reports";
+import RevenueAnalytics from "../features/revenue-management/revenue-analytics";
+
+// Remove this line; useAuthStore should only be called inside a React component or custom hook
 
 // Customer Service pages
 import TicketWithCustomerServicePage from "../features/ticket-management/pages/TicketWithCustomerServicePage";
@@ -17,10 +23,10 @@ export function withRole(element: React.ReactNode, roles: string[]) {
   return <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
 }
 
-// Route cho vai trò Customer Service
+// Route cho vai trò Customer Service (và Admin có thể access)
 export const CustomerServiceRoute: RouteObject = {
   path: "customer-service",
-  element: withRole(<DashboardLayout />, ["CUSTOMER_SERVICE"]),
+  element: withRole(<DashboardLayout />, ["CUSTOMER_SERVICE", "ADMIN"]),
   children: [
     {
       index: true,
@@ -28,23 +34,33 @@ export const CustomerServiceRoute: RouteObject = {
     },
     {
       path: "tickets",
-      element: <TicketWithCustomerServicePage />,
+      element: withRole(<TicketWithCustomerServicePage />, [
+        "CUSTOMER_SERVICE",
+        "ADMIN",
+      ]),
     },
     {
       path: "trips",
-      element: <TripWithCustomerServicePage />,
+      element: withRole(<TripWithCustomerServicePage />, ["CUSTOMER_SERVICE"]),
     },
     {
       path: "complaints",
-      element: <ComplaintsWithCustomerServicePage />,
+      element: withRole(<ComplaintsWithCustomerServicePage />, [
+        "CUSTOMER_SERVICE",
+      ]),
     },
     {
       path: "reviews",
-      element: <ReviewsWithCustomerServicePage />,
+      element: withRole(<ReviewsWithCustomerServicePage />, [
+        "CUSTOMER_SERVICE",
+      ]),
     },
     {
       path: "bookings",
-      element: <BookingsWithCustomerService />,
+      element: withRole(<BookingsWithCustomerService />, [
+        "CUSTOMER_SERVICE",
+        "ADMIN",
+      ]),
     },
     {
       path: "chat",
@@ -65,6 +81,31 @@ export const AuthRoute: RouteObject = {
     {
       path: "users-management",
       element: <UserManagement />,
+    },
+    {
+      path: "bus-operators-management",
+      element: withRole(<BusOperatorManagement />, ["ADMIN"]),
+    },
+    {
+      path: "contracts",
+      element: withRole(<ContractManagement />, ["ADMIN"]),
+    },
+    {
+      path: "revenue-reports",
+      element: withRole(<RevenueReports />, ["ADMIN"]),
+    },
+    {
+      path: "revenue-analytics",
+      element: withRole(<RevenueAnalytics />, ["ADMIN"]),
+    },
+    // Admin có thể access Customer Service functions
+    {
+      path: "tickets",
+      element: withRole(<TicketWithCustomerServicePage />, ["ADMIN"]),
+    },
+    {
+      path: "bookings",
+      element: withRole(<BookingsWithCustomerService />, ["ADMIN"]),
     },
   ],
 };

@@ -9,7 +9,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     if (auth.loggedInUser) {
       navigate(window.location.pathname);
     } else {
-      navigate("login");
+      navigate("/login");
     }
   }, [auth.loggedInUser, navigate]);
   return <div className="max-w-full h-screen">{children}</div>;
