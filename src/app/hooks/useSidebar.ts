@@ -102,6 +102,15 @@ export const useSidebar = () => {
       case "revenue-analytics":
         navigate("/admin/revenue-analytics");
         break;
+      case "assign-roles":
+        navigate("/admin/assign-roles");
+        break;
+      case "manage-roles":
+        navigate("/admin/manage-roles");
+        break;
+      case "permission-settings":
+        navigate("/admin/permission-settings");
+        break;
       default:
         // Can add navigation for other keys here or use a dynamic approach
         console.log("Navigate to:", key);

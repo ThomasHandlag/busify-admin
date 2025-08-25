@@ -17,6 +17,7 @@ import {
   MenuFoldOutlined,
 } from "@ant-design/icons";
 import { useAuthStore } from "../stores/auth_store";
+import { NotificationBell } from "./NotificationBell";
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -88,6 +89,9 @@ const DashboardHeader = ({ collapsed, onCollapse }: DashboardHeaderProps) => {
 
         <Col>
           <Space align="center" size="middle">
+            {/* Notifications */}
+            <NotificationBell />
+
             {/* User Profile Dropdown */}
             <Dropdown
               menu={{ items: userMenuItems }}

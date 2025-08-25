@@ -29,6 +29,7 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import { useAuthStore } from "../../stores/auth_store";
+import { NotificationDemo } from "../../components/NotificationDemo";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -141,6 +142,9 @@ const Dashboard = () => {
     >
       {auth.loggedInUser ? (
         <div>
+          {/* Notification Demo */}
+          <NotificationDemo />
+
           {/* Welcome Header */}
           <Card style={{ marginBottom: "24px" }}>
             <Row align="middle" justify="space-between">
