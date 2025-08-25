@@ -68,9 +68,13 @@ const MonthlyReportCharts: React.FC<MonthlyReportChartsProps> = ({
 
   // Dữ liệu cho biểu đồ cột so sánh
   const comparisonData = [
-    { metric: "Hành khách", value: monthlyData.totalPassengers, unit: "người" },
-    { metric: "Chuyến đi", value: monthlyData.totalTrips, unit: "chuyến" },
-    { metric: "Xe hoạt động", value: monthlyData.totalBuses, unit: "xe" },
+    {
+      metric: "Hành khách",
+      value: monthlyData.totalPassengers || 0,
+      unit: "người",
+    },
+    { metric: "Chuyến đi", value: monthlyData.totalTrips || 0, unit: "chuyến" },
+    { metric: "Xe hoạt động", value: monthlyData.totalBuses || 0, unit: "xe" },
   ];
 
   const columnConfig = {

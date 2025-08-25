@@ -47,8 +47,8 @@ export interface BookingStatusCount {
 
 export interface PaginatedBusOperators {
   content: Array<{
-    id: number;
-    name: string;
+    operatorId: number;
+    operatorName: string;
     email: string;
   }>;
   empty: boolean;
@@ -119,6 +119,7 @@ export const getAllBusOperators = async (): Promise<
   ApiResponse<PaginatedBusOperators>
 > => {
   const response = await apiClient.get("api/bus-operators/management");
+  console.log("Operators Data:", response.data);
   return response.data;
 };
 
