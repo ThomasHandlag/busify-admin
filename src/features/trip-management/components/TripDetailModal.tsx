@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Modal,
+  Drawer,
   Descriptions,
   Tag,
   Space,
@@ -13,6 +13,10 @@ import {
   Badge,
   Row,
   Col,
+  Collapse,
+  Form,
+  Input,
+  Spin,
 } from "antd";
 import {
   CarOutlined,
@@ -28,11 +32,37 @@ import {
   ThunderboltOutlined,
   DesktopOutlined,
   StarOutlined,
+  ShoppingCartOutlined,
+  PhoneOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { Trip } from "../../../app/api/trip";
+import TripSeatSelector from "./TripSeatSelector";
+// Import the API functions
+import { getTripSeats, type SeatStatus } from "../../../app/api/tripSeat";
+import { getSeatLayout, type LayoutData } from "../../../app/api/seatLayout";
 
 const { Title, Text } = Typography;
+const { Panel } = Collapse;
+
+// Harmonized palette
+const PALETTE = {
+  primary: "#1f6feb",
+  success: "#27ae60",
+  warning: "#f39c12",
+  danger: "#e74c3c",
+  surface: "#f5f7fb",
+  muted: "#6b7280",
+  border: "#d9d9d9",
+  accent: "#6f42c1",
+};
+
+// Mock seat data as fallback
+const seatMockData = {
+  cols: 4,
+  rows: 10,
+  floors: 1,
+};
 
 interface TripDetailModalProps {
   trip: Trip | null;
@@ -45,20 +75,85 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
   visible,
   onClose,
 }) => {
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [bookingModalVisible, setBookingModalVisible] = useState(false);
+  const [bookingForm] = Form.useForm();
+  const [bookingLoading, setBookingLoading] = useState(false);
+
+  // New state variables for API data
+  const [seatLayout, setSeatLayout] = useState<LayoutData | null>(null);
+  const [seatStatuses, setSeatStatuses] = useState<SeatStatus[]>([]);
+  const [seatLoading, setSeatLoading] = useState(false);
+
+  // Function to fetch seat data from APIs
+  const fetchSeatData = async () => {
+    if (!trip || !visible) return;
+
+    setSeatLoading(true);
+    try {
+      // Fetch seat layout
+      const layoutResponse = await getSeatLayout(trip.trip_id.toString());
+      if (layoutResponse.code === 200) {
+        setSeatLayout(layoutResponse.result.layoutData);
+      } else {
+        message.error("Không thể tải thông tin bố trí ghế");
+      }
+
+      // Fetch seat statuses
+      const statusResponse = await getTripSeats(trip.trip_id);
+      if (statusResponse.code === 200) {
+        setSeatStatuses(statusResponse.result.seatsStatus);
+      } else {
+        message.error("Không thể tải trạng thái ghế");
+      }
+    } catch (error) {
+      console.error("Error fetching seat data:", error);
+      message.error("Không thể tải thông tin ghế");
+    } finally {
+      setSeatLoading(false);
+    }
+  };
+
+  // Reset state when trip changes or drawer visibility changes
+  useEffect(() => {
+    // When drawer opens with a trip or trip changes
+    if (visible && trip) {
+      // Reset selected seats
+      setSelectedSeats([]);
+      // Reset booking form
+      bookingForm.resetFields();
+      // Hide booking form
+      setBookingModalVisible(false);
+      // Fetch seat data from API
+      fetchSeatData();
+    }
+
+    // When drawer closes, clean up state
+    if (!visible) {
+      // Reset selected seats
+      setSelectedSeats([]);
+      // Reset booking form visibility
+      setBookingModalVisible(false);
+      // Reset seat data
+      setSeatLayout(null);
+      setSeatStatuses([]);
+    }
+  }, [visible, trip, bookingForm]);
+
   if (!trip) return null;
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "scheduled":
-        return "green";
+        return PALETTE.success;
       case "cancelled":
-        return "red";
+        return PALETTE.danger;
       case "completed":
-        return "blue";
+        return PALETTE.accent;
       case "delayed":
-        return "orange";
+        return PALETTE.warning;
       default:
-        return "default";
+        return PALETTE.muted;
     }
   };
 
@@ -89,28 +184,28 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
     const amenities = [];
     if (trip.amenities.wifi) {
       amenities.push(
-        <Tag key="wifi" color="blue" style={{ margin: "2px" }}>
+        <Tag key="wifi" color={PALETTE.primary} style={{ margin: "2px" }}>
           <WifiOutlined /> WiFi
         </Tag>
       );
     }
     if (trip.amenities.air_conditioner) {
       amenities.push(
-        <Tag key="ac" color="cyan" style={{ margin: "2px" }}>
+        <Tag key="ac" color={PALETTE.accent} style={{ margin: "2px" }}>
           <SnippetsOutlined /> Điều hòa
         </Tag>
       );
     }
     if (trip.amenities.usb_charging) {
       amenities.push(
-        <Tag key="usb" color="orange" style={{ margin: "2px" }}>
+        <Tag key="usb" color={PALETTE.warning} style={{ margin: "2px" }}>
           <ThunderboltOutlined /> Sạc USB
         </Tag>
       );
     }
     if (trip.amenities.tv) {
       amenities.push(
-        <Tag key="tv" color="purple" style={{ margin: "2px" }}>
+        <Tag key="tv" color={PALETTE.muted} style={{ margin: "2px" }}>
           <DesktopOutlined /> TV
         </Tag>
       );
@@ -136,8 +231,95 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
     busPlate: "51B-12345",
   };
 
+  const handleSeatSelect = (seatId: string) => {
+    setSelectedSeats((prevSeats) => {
+      if (prevSeats.includes(seatId)) {
+        return prevSeats.filter((id) => id !== seatId);
+      } else {
+        return [...prevSeats, seatId];
+      }
+    });
+  };
+
+  const handleBookingSubmit = async (values: any) => {
+    setBookingLoading(true);
+    try {
+      // TODO: Implement actual booking API call here
+      console.log("Booking submitted:", {
+        tripId: trip?.trip_id,
+        seats: selectedSeats,
+        customerInfo: values,
+      });
+
+      message.success("Đặt vé thành công!");
+      setBookingModalVisible(false);
+      setSelectedSeats([]);
+      bookingForm.resetFields();
+    } catch (error) {
+      message.error("Không thể đặt vé. Vui lòng thử lại sau." + error);
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const renderBookingFormInline = () => (
+    <Card title="Thông tin khách hàng" size="small" style={{ marginTop: 16 }}>
+      <Form form={bookingForm} layout="vertical" onFinish={handleBookingSubmit}>
+        <Form.Item
+          name="customerName"
+          label="Họ và tên"
+          rules={[{ required: true, message: "Vui lòng nhập họ tên" }]}
+        >
+          <Input prefix={<UserOutlined />} placeholder="Nhập họ và tên" />
+        </Form.Item>
+
+        <Form.Item
+          name="phoneNumber"
+          label="Số điện thoại"
+          rules={[
+            { required: true, message: "Vui lòng nhập số điện thoại" },
+            { pattern: /^[0-9]{10}$/, message: "Số điện thoại không hợp lệ" },
+          ]}
+        >
+          <Input prefix={<PhoneOutlined />} placeholder="Nhập số điện thoại" />
+        </Form.Item>
+
+        <Form.Item
+          name="email"
+          label="Email"
+          rules={[
+            { required: true, message: "Vui lòng nhập email" },
+            { type: "email", message: "Email không hợp lệ" },
+          ]}
+        >
+          <Input prefix={<MailOutlined />} placeholder="Nhập email" />
+        </Form.Item>
+
+        <Form.Item>
+          <Space style={{ width: "100%", justifyContent: "flex-end" }}>
+            <Button onClick={() => setBookingModalVisible(false)}>Hủy</Button>
+            <Button type="primary" htmlType="submit" loading={bookingLoading}>
+              Xác nhận đặt vé
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Card>
+  );
+
+  // Custom close handler to ensure cleanup
+  const handleDrawerClose = () => {
+    // Reset all state
+    setSelectedSeats([]);
+    setBookingModalVisible(false);
+    bookingForm.resetFields();
+
+    // Call parent onClose
+    onClose();
+  };
+
   return (
-    <Modal
+    <Drawer
       title={
         <Space>
           <CarOutlined />
@@ -145,25 +327,30 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
         </Space>
       }
       open={visible}
-      onCancel={onClose}
+      onClose={handleDrawerClose}
       width={900}
-      footer={[
-        <Button key="email" icon={<MailOutlined />} onClick={handleSendEmail}>
-          Gửi email
-        </Button>,
-        <Button
-          key="print"
-          icon={<PrinterOutlined />}
-          onClick={handlePrintInfo}
-        >
-          In thông tin
-        </Button>,
-        <Button key="close" onClick={onClose}>
-          Đóng
-        </Button>,
-      ]}
+      destroyOnClose={true}
+      extra={
+        <Space>
+          <Button icon={<MailOutlined />} onClick={handleSendEmail}>
+            Gửi email
+          </Button>
+          <Button icon={<PrinterOutlined />} onClick={handlePrintInfo}>
+            In thông tin
+          </Button>
+          <Button onClick={onClose}>Đóng</Button>
+        </Space>
+      }
     >
-      <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+      {/* Use key based on trip_id to force full re-render when trip changes */}
+      <div
+        key={`trip-detail-${trip?.trip_id}`}
+        style={{
+          maxHeight: "calc(100vh - 108px)",
+          overflowY: "auto",
+          paddingBottom: "20px",
+        }}
+      >
         {/* Status and Rating */}
         <Row gutter={16} style={{ marginBottom: "16px" }}>
           <Col span={12}>
@@ -191,6 +378,81 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
           </Col>
         </Row>
 
+        {/* Trip Seat Section (use items prop to avoid rc-collapse children deprecation) */}
+        <Collapse
+          defaultActiveKey={["1"]}
+          style={{ marginBottom: "16px" }}
+          items={[
+            {
+              key: "1",
+              label: "Sơ đồ ghế",
+              children: (
+                <>
+                  {seatLoading ? (
+                    <div style={{ textAlign: "center", padding: "20px" }}>
+                      <Spin size="large" />
+                      <div style={{ marginTop: "10px" }}>
+                        Đang tải thông tin ghế...
+                      </div>
+                    </div>
+                  ) : (
+                    <TripSeatSelector
+                      key={`seat-selector-${trip?.trip_id}`}
+                      seatConfig={seatLayout || seatMockData}
+                      selectedSeats={selectedSeats}
+                      onSeatSelect={handleSeatSelect}
+                      availableSeats={trip?.available_seats || 0}
+                      seatStatuses={seatStatuses}
+                    />
+                  )}
+
+                  {selectedSeats.length > 0 && (
+                    <div style={{ marginTop: "12px" }}>
+                      <Space direction="vertical" style={{ width: "100%" }}>
+                        <div>
+                          <Text strong>Ghế đã chọn:</Text>{" "}
+                          {selectedSeats.map((seat) => (
+                            <Tag
+                              color={PALETTE.primary}
+                              key={seat}
+                              style={{ margin: "2px" }}
+                            >
+                              {seat}
+                            </Tag>
+                          ))}
+                        </div>
+                        <div>
+                          <Text strong>Tổng tiền:</Text>{" "}
+                          <Text style={{ color: PALETTE.success }}>
+                            {(
+                              selectedSeats.length * (trip?.price_per_seat || 0)
+                            ).toLocaleString("vi-VN")}{" "}
+                            VNĐ
+                          </Text>
+                        </div>
+                        <Button
+                          type="primary"
+                          icon={<ShoppingCartOutlined />}
+                          onClick={() => setBookingModalVisible(true)}
+                          style={{
+                            marginTop: 8,
+                            backgroundColor: PALETTE.primary,
+                            borderColor: PALETTE.primary,
+                          }}
+                        >
+                          Đặt vé ({selectedSeats.length} ghế)
+                        </Button>
+                        {/* Inline booking form inside drawer */}
+                        {bookingModalVisible && renderBookingFormInline()}
+                      </Space>
+                    </div>
+                  )}
+                </>
+              ),
+            },
+          ]}
+        />
+
         {/* Route Information */}
         <Card
           title="Thông tin tuyến đường"
@@ -200,13 +462,13 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
           <Descriptions column={1} size="small">
             <Descriptions.Item label="Điểm khởi hành">
               <Space>
-                <EnvironmentOutlined style={{ color: "#52c41a" }} />
+                <EnvironmentOutlined style={{ color: PALETTE.success }} />
                 <Text strong>{trip.route.start_location}</Text>
               </Space>
             </Descriptions.Item>
             <Descriptions.Item label="Điểm đến">
               <Space>
-                <EnvironmentOutlined style={{ color: "#f5222d" }} />
+                <EnvironmentOutlined style={{ color: PALETTE.danger }} />
                 <Text strong>{trip.route.end_location}</Text>
               </Space>
             </Descriptions.Item>
@@ -297,10 +559,10 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
                 style={{
                   backgroundColor:
                     trip.available_seats > 20
-                      ? "#52c41a"
+                      ? PALETTE.success
                       : trip.available_seats > 10
-                      ? "#faad14"
-                      : "#ff4d4f",
+                      ? PALETTE.warning
+                      : PALETTE.danger,
                 }}
               >
                 <UserOutlined style={{ fontSize: 16 }} />
@@ -309,7 +571,10 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
             <Descriptions.Item label="Giá vé / ghế" span={2}>
               <Space>
                 <DollarOutlined />
-                <Text strong style={{ color: "#52c41a", fontSize: "16px" }}>
+                <Text
+                  strong
+                  style={{ color: PALETTE.success, fontSize: "16px" }}
+                >
                   {trip.price_per_seat.toLocaleString("vi-VN")} VNĐ
                 </Text>
               </Space>
@@ -332,7 +597,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
           </Text>
         </Card>
       </div>
-    </Modal>
+    </Drawer>
   );
 };
 

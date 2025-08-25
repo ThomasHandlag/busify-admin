@@ -8,6 +8,7 @@ import {
   SafetyCertificateOutlined,
   StarOutlined,
   FrownOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 
 export interface AppMenuItem {
@@ -50,6 +51,12 @@ export const menuItems: AppMenuItem[] = [
         key: "list-bus-operator",
         label: "Hợp đồng",
         roles: ["ADMIN"],
+      },
+      {
+        key: "chat-customer-service",
+        label: "Chat với Khách hàng",
+        icon: <MessageOutlined />,
+        roles: ["CUSTOMER_SERVICE"],
       },
     ],
   },

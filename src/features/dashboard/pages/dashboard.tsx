@@ -28,8 +28,8 @@ import {
   SearchOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-import { useAuthStore } from "../../stores/auth_store";
-import { NotificationDemo } from "../../components/NotificationDemo";
+import { NotificationDemo } from "../../../components/NotificationDemo";
+import { useAuthStore } from "../../../stores/auth_store";
 
 const { Title, Text, Paragraph } = Typography;
 
