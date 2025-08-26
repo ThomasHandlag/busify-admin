@@ -15,6 +15,7 @@ import {
   Divider,
   Spin,
   Empty,
+  Tooltip, // thêm Tooltip
 } from "antd";
 import {
   BookOutlined,
@@ -111,12 +112,15 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   if (!booking) return null;
 
   const getStatusColor = (status: string) => {
+    // Support both new enum values and older "cancelled" spelling
     switch (status) {
       case "confirmed":
         return "green";
       case "pending":
         return "orange";
-      case "cancelled":
+      case "canceled_by_user":
+      case "canceled_by_operator":
+      case "cancelled": // legacy
         return "red";
       case "completed":
         return "blue";
@@ -126,18 +130,46 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   };
 
   const getStatusText = (status: string) => {
+    // Map new enum values to user-friendly Vietnamese strings, keep legacy support
     switch (status) {
       case "confirmed":
         return "Đã xác nhận";
       case "pending":
         return "Chờ xử lý";
-      case "cancelled":
+      case "canceled_by_user":
+        return "Đã hủy (khách hàng)";
+      case "canceled_by_operator":
+        return "Đã hủy (nhà xe/nhân viên)";
+      case "cancelled": // legacy
         return "Đã hủy";
       case "completed":
         return "Hoàn thành";
       default:
         return status;
     }
+  };
+
+  // Thêm hàm helper để hiển thị Tag trạng thái gọn gàng với Tooltip
+  const renderStatusTag = (status: string) => {
+    const text = getStatusText(status);
+    return (
+      <Tooltip title={text}>
+        <Tag
+          color={getStatusColor(status)}
+          style={{
+            fontSize: 14,
+            maxWidth: 120,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            verticalAlign: "middle",
+            display: "inline-block",
+          }}
+        >
+          {text}
+        </Tag>
+      </Tooltip>
+    );
   };
 
   const handleEdit = () => {
@@ -167,13 +199,12 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         try {
           await deleteBooking(booking.booking_code);
           // Update local status so UI reflects cancellation immediately
+          // Use new enum value for operator-triggered cancellation
           setBookingDetail((prev) =>
-            prev ? { ...prev, status: "cancelled" } : prev
+            prev ? { ...prev, status: "canceled_by_operator" } : prev
           );
           message.success("Hủy đặt vé thành công");
           onDelete?.(booking.booking_code);
-          // optionally keep modal open for user to see updated status briefly,
-          // then close
           onClose();
         } catch (error) {
           message.error("Không thể hủy đặt vé. Vui lòng thử lại." + error);
@@ -303,13 +334,7 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
               <Col span={24}>
                 <Card size="small" style={{ textAlign: "center" }}>
                   <Title level={4} style={{ margin: 0 }}>
-                    Trạng thái:{" "}
-                    <Tag
-                      color={getStatusColor(bookingDetail.status)}
-                      style={{ fontSize: "14px" }}
-                    >
-                      {getStatusText(bookingDetail.status)}
-                    </Tag>
+                    Trạng thái: {renderStatusTag(bookingDetail.status)}
                   </Title>
                 </Card>
               </Col>
