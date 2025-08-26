@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import type { MenuProps } from "antd";
 import { useAuthStore } from "../../stores/auth_store";
-import { menuItems, routeToKeyMap, type AppMenuItem } from "../../config/menuConfig";
-
+import {
+  menuItems,
+  routeToKeyMap,
+  type AppMenuItem,
+} from "../../config/menuConfig";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -87,8 +90,20 @@ export const useSidebar = () => {
       case "bookings-customer-service":
         navigate("/customer-service/bookings");
         break;
+      case "bus-operators-management":
+        navigate("/admin/bus-operators-management");
+        break;
+      case "list-bus-operator":
+        navigate("/admin/contracts");
+        break;
+      case "revenue-reports":
+        navigate("/admin/revenue-reports");
+        break;
+      case "revenue-analytics":
+        navigate("/admin/revenue-analytics");
       case "chat-customer-service":
         navigate("/customer-service/chat");
+
         break;
       default:
         // Can add navigation for other keys here or use a dynamic approach
