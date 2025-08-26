@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import {
   Drawer,
@@ -17,6 +18,7 @@ import {
   Form,
   Input,
   Spin,
+  Alert,
 } from "antd";
 import {
   CarOutlined,
@@ -43,7 +45,6 @@ import { getTripSeats, type SeatStatus } from "../../../app/api/tripSeat";
 import { getSeatLayout, type LayoutData } from "../../../app/api/seatLayout";
 
 const { Title, Text } = Typography;
-const { Panel } = Collapse;
 
 // Harmonized palette
 const PALETTE = {
@@ -94,6 +95,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       // Fetch seat layout
       const layoutResponse = await getSeatLayout(trip.trip_id.toString());
       if (layoutResponse.code === 200) {
+        console.log("Seat layout data:", layoutResponse.result.layoutData);
         setSeatLayout(layoutResponse.result.layoutData);
       } else {
         message.error("Không thể tải thông tin bố trí ghế");
@@ -102,6 +104,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       // Fetch seat statuses
       const statusResponse = await getTripSeats(trip.trip_id);
       if (statusResponse.code === 200) {
+        console.log("Seat status data:", statusResponse.result.seatsStatus);
         setSeatStatuses(statusResponse.result.seatsStatus);
       } else {
         message.error("Không thể tải trạng thái ghế");
@@ -307,6 +310,11 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
     </Card>
   );
 
+  // Add this function to check if trip is bookable
+  const isTripBookable = (status: string): boolean => {
+    return !["cancelled", "delayed", "departed"].includes(status);
+  };
+
   // Custom close handler to ensure cleanup
   const handleDrawerClose = () => {
     // Reset all state
@@ -378,6 +386,19 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
           </Col>
         </Row>
 
+        {/* Add alert for non-bookable trips */}
+        {!isTripBookable(trip.status) && (
+          <Alert
+            message="Không thể đặt vé"
+            description={`Chuyến đi này đã ${getStatusText(
+              trip.status
+            ).toLowerCase()}, không thể đặt vé.`}
+            type="warning"
+            showIcon
+            style={{ marginBottom: "16px" }}
+          />
+        )}
+
         {/* Trip Seat Section (use items prop to avoid rc-collapse children deprecation) */}
         <Collapse
           defaultActiveKey={["1"]}
@@ -403,10 +424,12 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
                       onSeatSelect={handleSeatSelect}
                       availableSeats={trip?.available_seats || 0}
                       seatStatuses={seatStatuses}
+                      tripStatus={trip.status} // Add trip status prop
                     />
                   )}
 
-                  {selectedSeats.length > 0 && (
+                  {/* Only show booking options for bookable trips */}
+                  {selectedSeats.length > 0 && isTripBookable(trip.status) && (
                     <div style={{ marginTop: "12px" }}>
                       <Space direction="vertical" style={{ width: "100%" }}>
                         <div>

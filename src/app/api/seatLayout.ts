@@ -21,6 +21,12 @@ export interface SeatLayoutResponse {
 export const getSeatLayout = async (
   tripId: string
 ): Promise<SeatLayoutResponse> => {
-  const response = await apiClient.get(`/api/seat-layout/trip/${tripId}`);
-  return response.data;
+  try {
+    const response = await apiClient.get(`/api/seat-layout/trip/${tripId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching seat layout:", error);
+    throw error; // hoặc return giá trị mặc định tuỳ nhu cầu
+  }
 };
+
