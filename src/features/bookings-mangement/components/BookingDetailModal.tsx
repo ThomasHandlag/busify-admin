@@ -40,6 +40,7 @@ import {
   type BookingDetailAPI,
   type UpdateBookingParams,
 } from "../../../app/api/booking";
+import MailSenderModal from "../../../components/MailSenderModal"; // added import
 
 const { Title, Text } = Typography;
 
@@ -65,6 +66,10 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   const [bookingDetail, setBookingDetail] = useState<BookingDetailAPI | null>(
     null
   );
+
+  // Mail sender form & visibility
+  const [mailForm] = Form.useForm();
+  const [isMailModalVisible, setIsMailModalVisible] = useState(false);
 
   useEffect(() => {
     if (booking && visible) {
@@ -265,6 +270,20 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     }
   };
 
+  // New: open mail modal and prefill form
+  const handleSendEmail = () => {
+    // Prefill common fields if available
+    mailForm.setFieldsValue({
+      toEmail: bookingDetail?.guestEmail || bookingDetail?.email || "",
+      userName:
+        bookingDetail?.guestFullName || bookingDetail?.passenger_name || "",
+      subject: `Thông tin đặt vé ${booking?.booking_code} - Busify`,
+      caseNumber: booking?.booking_code,
+      message: "", // keep empty for agent to edit
+    });
+    setIsMailModalVisible(true);
+  };
+
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {
       case "Credit Card":
@@ -313,6 +332,9 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
             </Button>
             <Button icon={<EditOutlined />} onClick={handleEdit}>
               Chỉnh sửa
+            </Button>
+            <Button icon={<MailOutlined />} onClick={handleSendEmail}>
+              Gửi email
             </Button>
             <Button onClick={onClose}>Đóng</Button>
           </Space>
@@ -639,6 +661,24 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           <Empty description="Không thể tải thông tin chi tiết" />
         )}
       </div>
+
+      {/* Mail sender modal */}
+      <MailSenderModal
+        isVisible={isMailModalVisible}
+        setIsVisible={setIsMailModalVisible}
+        form={mailForm}
+        defaultRecipient={
+          bookingDetail?.guestEmail || bookingDetail?.email || ""
+        }
+        defaultSubject={`Thông tin đặt vé ${booking?.booking_code} - Busify`}
+        defaultUserName={
+          bookingDetail?.guestFullName || bookingDetail?.passenger_name || ""
+        }
+        caseNumber={booking?.booking_code}
+        onSuccess={() => {
+          message.success("Đã gửi email thành công!");
+        }}
+      />
     </Modal>
   );
 };
