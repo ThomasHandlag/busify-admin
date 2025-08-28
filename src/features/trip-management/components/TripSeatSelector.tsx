@@ -1,14 +1,5 @@
 import React from "react";
-import {
-  Row,
-  Col,
-  Button,
-  Tooltip,
-  Space,
-  Typography,
-  Tabs,
-  Alert,
-} from "antd";
+import { Row, Col, Button, Tooltip, Space, Typography, Tabs } from "antd";
 import { type SeatStatus } from "../../../app/api/tripSeat";
 
 const { Text } = Typography;
