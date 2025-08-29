@@ -17,6 +17,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import {
   sendBulkCustomerSupportEmailForTrip,
+  sendCustomerSupportEmailToBusOperator,
   type BulkCustomerSupportEmailRequestDTO,
 } from "../app/api/email";
 
@@ -29,6 +30,7 @@ interface BulkMailSenderModalProps {
   defaultTripId?: number;
   defaultSubject?: string;
   csRepName?: string;
+  isForOperator?: boolean; // Thêm prop để phân biệt loại email
   onSuccess?: () => void;
 }
 
@@ -39,25 +41,39 @@ const BulkMailSenderModal: React.FC<BulkMailSenderModalProps> = ({
   defaultTripId,
   defaultSubject,
   csRepName,
+  isForOperator = false, // Mặc định là false (gửi cho hành khách)
   onSuccess,
 }) => {
   const sendBulkEmailMutation = useMutation({
     mutationFn: async (emailData: BulkCustomerSupportEmailRequestDTO) => {
-      const response = await sendBulkCustomerSupportEmailForTrip(emailData);
+      // Chọn API dựa trên isForOperator
+      const apiFunction = isForOperator
+        ? sendCustomerSupportEmailToBusOperator
+        : sendBulkCustomerSupportEmailForTrip;
+      const response = await apiFunction(emailData);
       return response;
     },
     onSuccess: (response) => {
       if (response.code === 200) {
-        message.success("Email hàng loạt đã được gửi thành công!");
+        const successMessage = isForOperator
+          ? "Email đến nhà xe đã được gửi thành công!"
+          : "Email hàng loạt đã được gửi thành công!";
+        message.success(successMessage);
         setIsVisible(false);
         form.resetFields();
         if (onSuccess) onSuccess();
       } else {
-        message.error(response.message || "Gửi email hàng loạt thất bại!");
+        const errorMessage = isForOperator
+          ? "Gửi email đến nhà xe thất bại!"
+          : "Gửi email hàng loạt thất bại!";
+        message.error(response.message || errorMessage);
       }
     },
     onError: (error: Error) => {
-      message.error(`Lỗi gửi email hàng loạt: ${error.message}`);
+      const errorMessage = isForOperator
+        ? `Lỗi gửi email đến nhà xe: ${error.message}`
+        : `Lỗi gửi email hàng loạt: ${error.message}`;
+      message.error(errorMessage);
     },
   });
 
@@ -98,7 +114,9 @@ const BulkMailSenderModal: React.FC<BulkMailSenderModalProps> = ({
       title={
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <MailOutlined />
-          <span>Gửi Email Hàng Loạt</span>
+          <span>
+            {isForOperator ? "Gửi Email Cho Nhà Xe" : "Gửi Email Hàng Loạt"}
+          </span>
         </div>
       }
       open={isVisible}

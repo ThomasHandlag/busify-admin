@@ -100,6 +100,9 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
   const [isBulkMailModalVisible, setIsBulkMailModalVisible] = useState(false);
   const [bulkMailForm] = Form.useForm();
 
+  // Thêm state để phân biệt loại email (hành khách hay nhà xe)
+  const [isForOperator, setIsForOperator] = useState(false);
+
   // Function to fetch seat data from APIs
   const fetchSeatData = async () => {
     if (!trip || !visible) return;
@@ -335,6 +338,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
     mailForm.resetFields();
     setIsBulkMailModalVisible(false); // Reset bulk mail modal state
     bulkMailForm.resetFields();
+    setIsForOperator(false); // Reset isForOperator
 
     // Call parent onClose
     onClose();
@@ -347,21 +351,18 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       tripId: trip?.trip_id,
       subject: `Thông tin chuyến đi ${trip?.trip_id} - Busify`,
     });
+    setIsForOperator(false); // Đặt là false cho hành khách
     setIsBulkMailModalVisible(true);
   };
 
   const handleSendToOperator = () => {
-    // Prefill mail form with operator details
-    const operatorEmail = `${trip?.operator_name
-      .toLowerCase()
-      .replace(/\s+/g, "")}@busify.com`; // Placeholder; use actual email if available
-    mailForm.setFieldsValue({
-      toEmail: operatorEmail,
-      userName: trip?.operator_name || "Nhà xe",
+    // Prefill bulk mail form with trip details và sử dụng sendCustomerSupportEmailToBusOperator
+    bulkMailForm.setFieldsValue({
+      tripId: trip?.trip_id,
       subject: `Thông tin chuyến đi ${trip?.trip_id} - Busify`,
-      caseNumber: trip?.trip_id.toString(),
     });
-    setIsMailModalVisible(true);
+    setIsForOperator(true); // Đặt là true cho nhà xe
+    setIsBulkMailModalVisible(true);
   };
 
   // Tạo menu cho dropdown
@@ -697,10 +698,12 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
         defaultTripId={bulkMailForm.getFieldValue("tripId") || trip?.trip_id}
         defaultSubject={bulkMailForm.getFieldValue("subject") || ""}
         csRepName="Admin" // Or get from current user context
+        isForOperator={isForOperator} // Truyền prop để sử dụng sendCustomerSupportEmailToBusOperator khi true
         onSuccess={() => {
-          message.success("Đã gửi email hàng loạt thành công!");
+          message.success("Đã gửi email thành công!");
           setIsBulkMailModalVisible(false);
           bulkMailForm.resetFields();
+          setIsForOperator(false); // Reset sau khi gửi
         }}
       />
     </Drawer>

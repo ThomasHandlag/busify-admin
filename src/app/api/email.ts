@@ -46,3 +46,13 @@ export const sendBulkCustomerSupportEmailForTrip = async (
   );
   return response.data;
 };
+
+export const sendCustomerSupportEmailToBusOperator = async (
+  emailData: BulkCustomerSupportEmailRequestDTO
+) => {
+  const response = await apiClient.post(
+    "/api/email/bus-operator-customer-support",
+    emailData
+  );
+  return response.data;
+};
