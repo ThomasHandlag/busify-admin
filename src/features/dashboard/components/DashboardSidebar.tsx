@@ -18,7 +18,6 @@ interface DashboardSidebarProps {
 }
 
 export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
-  customerSatisfaction,
   chatSessions,
 }) => {
   const metricCardStyle: React.CSSProperties = {
@@ -30,36 +29,6 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   return (
     <Space direction="vertical" style={{ width: "100%" }} size="middle">
-      <Card style={{ ...metricCardStyle }}>
-        <Typography.Title level={5} style={{ marginBottom: 6 }}>
-          Hiệu suất
-        </Typography.Title>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <div>
-            <Typography.Text type="secondary">Số ticket/ngày</Typography.Text>
-            <div style={{ marginTop: 6 }}>
-              <Typography.Title level={4} style={{ margin: 0 }}>
-                42
-              </Typography.Title>
-            </div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <Typography.Text type="secondary">Độ hài lòng</Typography.Text>
-            <div style={{ marginTop: 6 }}>
-              <Typography.Title level={4} style={{ margin: 0 }}>
-                {customerSatisfaction}/5
-              </Typography.Title>
-            </div>
-          </div>
-        </div>
-      </Card>
-
       <Card
         style={{ ...metricCardStyle }}
         title="Chat trực tiếp"

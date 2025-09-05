@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from "react";
-import { Col, Row, message, Spin, Button } from "antd";
+import { Col, Row, message, Spin, Button, Form } from "antd"; // Thêm Form
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { MetricsCard } from "../components/MetricsCard";
@@ -10,9 +10,11 @@ import type { ChatSession } from "../types";
 import {
   getComplaintByAgent,
   type ComplaintDetail,
+  updateComplaintStatus, // Giả định API này tồn tại để cập nhật trạng thái
 } from "../../../app/api/complaint";
 import { DashboardHeader } from "../components/DashboardHeader";
 import ComplaintDetailModal from "../../complaints-management/components/ComplaintDetailModal";
+import MailSenderModal from "../../../components/MailSenderModal"; // Thêm import
 
 export const DashboardWithCustomerService = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -25,6 +27,12 @@ export const DashboardWithCustomerService = () => {
   const [selectedComplaint, setSelectedComplaint] =
     useState<ComplaintDetail | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // Thêm state cho modal gửi email
+  const [isMailModalVisible, setIsMailModalVisible] = useState(false);
+  const [selectedTicketForEmail, setSelectedTicketForEmail] =
+    useState<ComplaintDetail | null>(null);
+  const [mailForm] = Form.useForm(); // Form instance cho modal
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
@@ -106,7 +114,11 @@ export const DashboardWithCustomerService = () => {
     customerSatisfaction: 4.2,
   };
 
-  const handleTicketAction = (action: string, ticketId: number) => {
+  const handleTicketAction = (
+    action: string,
+    ticketId: number,
+    extra?: any
+  ) => {
     if (action === "View") {
       const complaint = complaints.find((c) => c.id === ticketId);
       if (complaint) {
@@ -115,11 +127,35 @@ export const DashboardWithCustomerService = () => {
       } else {
         message.error("Không tìm thấy khiếu nại");
       }
-    } else if (action === "Process") {
-      message.success(`Bắt đầu xử lý khiếu nại ${ticketId}`);
+    } else if (action === "SendEmail") {
+      const complaint = complaints.find((c) => c.id === ticketId);
+      if (complaint) {
+        setSelectedTicketForEmail(complaint);
+        setIsMailModalVisible(true);
+      } else {
+        message.error("Không tìm thấy khiếu nại để gửi email");
+      }
+    } else if (action === "ChangeStatus") {
+      // Cập nhật trạng thái local
+      setComplaints((prev) =>
+        prev.map((c) => (c.id === ticketId ? { ...c, status: extra } : c))
+      );
+      // Gọi API để cập nhật trạng thái (giả định)
+      updateComplaintStatus(ticketId, extra)
+        .then(() =>
+          message.success(
+            `Trạng thái khiếu nại ${ticketId} đã được cập nhật thành ${extra}`
+          )
+        )
+        .catch(() => message.error("Lỗi khi cập nhật trạng thái"));
     } else {
       message.success(`${action} ticket ${ticketId}`);
     }
+  };
+
+  // Hàm xử lý khi gửi email thành công
+  const handleEmailSuccess = () => {
+    fetchComplaints(); // Refresh danh sách khiếu nại
   };
 
   const handleModalClose = () => {
@@ -194,6 +230,21 @@ export const DashboardWithCustomerService = () => {
         complaint={selectedComplaint}
         visible={isModalVisible}
         onClose={handleModalClose}
+      />
+
+      {/* Thêm MailSenderModal */}
+      <MailSenderModal
+        isVisible={isMailModalVisible}
+        setIsVisible={setIsMailModalVisible}
+        form={mailForm}
+        defaultRecipient={selectedTicketForEmail?.customer?.customerEmail || ""} // Giả định customer có email
+        defaultSubject={`Phản hồi khiếu nại #${
+          selectedTicketForEmail?.id || ""
+        }`}
+        defaultUserName={selectedTicketForEmail?.customer?.customerName || ""}
+        caseNumber={selectedTicketForEmail?.id?.toString() || ""}
+        csRepName="Admin" // Có thể lấy từ user hiện tại
+        onSuccess={handleEmailSuccess}
       />
     </div>
   );
