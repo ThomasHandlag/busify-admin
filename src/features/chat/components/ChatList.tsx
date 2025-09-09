@@ -1,22 +1,8 @@
 import React from "react";
-import { Input, Typography, Badge, Empty } from "antd";
+import { Input, Typography, Empty } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { ChatItem } from "./ChatItem";
-
-interface ChatSession {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  avatar?: string;
-  status: "online" | "offline" | "away";
-  lastMessage: string;
-  lastMessageTime: string;
-  unreadCount: number;
-  isActive: boolean;
-  priority: "high" | "medium" | "low";
-  tags: string[];
-}
+import type { ChatSession } from "../../../app/api/chat";
 
 interface ChatListProps {
   chatSessions: ChatSession[];
@@ -24,8 +10,6 @@ interface ChatListProps {
   searchText: string;
   onSearchChange: (value: string) => void;
   onChatSelect: (chat: ChatSession) => void;
-  getStatusColor: (status: string) => string;
-  getPriorityColor: (priority: string) => string;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -34,14 +18,16 @@ export const ChatList: React.FC<ChatListProps> = ({
   searchText,
   onSearchChange,
   onChatSelect,
-  getStatusColor,
-  getPriorityColor,
 }) => {
-  const filteredChats = chatSessions.filter(
-    (chat) =>
-      chat.customerName.toLowerCase().includes(searchText.toLowerCase()) ||
-      chat.lastMessage.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const q = searchText.trim().toLowerCase();
+  const filteredChats = chatSessions.filter((chat) => {
+    if (!q) return true;
+    return (
+      chat.customerName.toLowerCase().includes(q) ||
+      chat.customerEmail.toLowerCase().includes(q) ||
+      chat.lastMessage.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div
@@ -55,62 +41,41 @@ export const ChatList: React.FC<ChatListProps> = ({
     >
       <div
         style={{
-          padding: "20px",
+          padding: "16px",
           background: "#fff",
           borderBottom: "1px solid #e8e8e8",
         }}
       >
         <Typography.Title
           level={4}
-          style={{ margin: "0 0 16px 0", color: "#262626" }}
+          style={{ margin: "0 0 12px 0", color: "#262626" }}
         >
           Tin nhắn
         </Typography.Title>
         <Input
-          placeholder="Tìm kiếm cuộc trò chuyện..."
+          placeholder="Tìm kiếm theo tên, email hoặc tin nhắn..."
           prefix={<SearchOutlined style={{ color: "#8c8c8c" }} />}
           value={searchText}
           onChange={(e) => onSearchChange(e.target.value)}
           style={{
-            borderRadius: "20px",
+            borderRadius: 20,
             background: "#f5f5f5",
             border: "1px solid #e8e8e8",
+            height: 38,
           }}
         />
       </div>
 
       <div
         style={{
-          padding: "16px 20px 8px",
+          padding: "12px 16px",
           background: "#fff",
           borderBottom: "1px solid #f0f0f0",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Typography.Text
-            strong
-            style={{ color: "#595959", fontSize: "13px" }}
-          >
-            CUỘC TRÒ CHUYỆN ({filteredChats.length})
-          </Typography.Text>
-          <Badge
-            count={filteredChats.filter((c) => c.unreadCount > 0).length}
-            style={{
-              backgroundColor: "#ff4d4f",
-              borderRadius: "10px",
-              fontSize: "11px",
-              minWidth: "18px",
-              height: "18px",
-              lineHeight: "18px",
-            }}
-          />
-        </div>
+        <Typography.Text strong style={{ color: "#595959", fontSize: 13 }}>
+          CUỘC TRÒ CHUYỆN ({filteredChats.length})
+        </Typography.Text>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
@@ -122,16 +87,17 @@ export const ChatList: React.FC<ChatListProps> = ({
             />
           </div>
         ) : (
-          filteredChats.map((chat) => (
-            <ChatItem
-              key={chat.id}
-              chat={chat}
-              isSelected={selectedChat?.id === chat.id}
-              onSelect={onChatSelect}
-              getStatusColor={getStatusColor}
-              getPriorityColor={getPriorityColor}
-            />
-          ))
+          filteredChats.map((chat) => {
+            const isSelected = selectedChat?.id === chat.id;
+            return (
+              <ChatItem
+                key={chat.id}
+                chat={chat}
+                isSelected={isSelected}
+                onSelect={onChatSelect}
+              />
+            );
+          })
         )}
       </div>
     </div>

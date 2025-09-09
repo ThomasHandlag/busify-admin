@@ -7,6 +7,8 @@ import { MessageInput } from "./components/MessageInput";
 import { EmptyState } from "./components/EmptyState";
 import { useAuthStore } from "../../stores/auth_store";
 import { Col, message, Row } from "antd";
+import type { ChatSession } from "../../app/api/chat";
+import { fetchChatSessions, fetchMessages } from "../../app/api/chat"; // Thêm fetchMessages vào import
 
 // Mock data interfaces
 interface ChatMessage {
@@ -19,60 +21,40 @@ interface ChatMessage {
   isAgent: boolean;
 }
 
-interface ChatSession {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  avatar?: string;
-  status: "online" | "offline" | "away";
-  lastMessage: string;
-  lastMessageTime: string;
-  unreadCount: number;
-  isActive: boolean;
-  priority: "high" | "medium" | "low";
-  tags: string[];
-}
-
 export const ChatWithCustomerServicePage = () => {
-  const { loggedInUser, accessToken } = useAuthStore(); // Thay đổi từ useAuth sang useAuthStore và lấy loggedInUser, accessToken
+  const { loggedInUser, accessToken } = useAuthStore();
   const [searchText, setSearchText] = useState("");
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]); // State cho danh sách hội thoại
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedChat, setSelectedChat] = useState<ChatSession | null>(null);
   const [messageText, setMessageText] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // State cho WebSocket
   const [stompClient, setStompClient] = useState<Stomp.Client | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Hàm kết nối WebSocket
   const connect = useCallback(() => {
-    if (!loggedInUser || stompClient?.connected) return; // Thay user thành loggedInUser
+    if (!loggedInUser || stompClient?.connected) return;
 
     try {
-      const socket = new SockJS(`${process.env.REACT_APP_API_URL}/ws`);
+      const socket = new SockJS(`http://localhost:8080/ws`);
       const client = Stomp.over(socket);
-      // Tắt log debug của STOMP
       client.debug = () => {};
 
       client.connect(
-        { Authorization: `Bearer ${accessToken}` }, // Thay localStorage.getItem("accessToken") thành accessToken từ store
+        { Authorization: `Bearer ${accessToken}` },
         () => {
           setIsConnected(true);
           message.success("Kết nối chat thành công!");
 
-          // Lắng nghe tin nhắn riêng tư gửi đến CSKH
           client.subscribe(
-            `/user/${loggedInUser.email}/queue/private`, // Thay user.username thành loggedInUser.email
+            `/user/${loggedInUser.email}/queue/private`,
             (payload) => {
               const newMessage: ChatMessage = JSON.parse(payload.body);
-              // TODO: Cập nhật UI khi có tin nhắn mới
-              // 1. Hiển thị notification
-              // 2. Cập nhật danh sách hội thoại (lastMessage, unreadCount)
-              // 3. Nếu đang mở đúng chat, thêm tin nhắn vào `messages`
               console.log("Received private message:", newMessage);
+              // Update UI: update messages if relevant, update chatSessions -> lastMessage / unreadCount
+              // Minimal behavior: append to messages if chatting with sender email matches selectedChat
+              setMessages((prev) => [...prev, newMessage]);
             }
           );
 
@@ -81,7 +63,6 @@ export const ChatWithCustomerServicePage = () => {
         (error) => {
           console.error("Lỗi kết nối WebSocket:", error);
           setIsConnected(false);
-          // Thử kết nối lại sau 5 giây
           setTimeout(connect, 5000);
         }
       );
@@ -90,99 +71,108 @@ export const ChatWithCustomerServicePage = () => {
       setIsConnected(false);
       setTimeout(connect, 5000);
     }
-  }, [loggedInUser, stompClient, accessToken]); // Cập nhật dependencies
+  }, [loggedInUser, stompClient, accessToken]);
 
-  // Effect để kết nối và ngắt kết nối
   useEffect(() => {
     if (loggedInUser?.email) {
-      // Thay user?.username thành loggedInUser?.email
       connect();
     }
 
     return () => {
-      stompClient?.disconnect(() => {
-        setIsConnected(false);
-        console.log("Đã ngắt kết nối WebSocket.");
-      });
+      try {
+        stompClient?.disconnect(() => {
+          setIsConnected(false);
+          console.log("Đã ngắt kết nối WebSocket.");
+        });
+      } catch (err) {
+        console.error("Lỗi khi ngắt kết nối WebSocket:", err);
+      }
     };
-  }, [loggedInUser, connect, stompClient]); // Cập nhật dependencies
+  }, [loggedInUser, connect, stompClient]);
 
-  // TODO: Effect để fetch danh sách hội thoại ban đầu từ API
   useEffect(() => {
-    // fetchChatSessions();
-    // Tạm thời dùng mock data để hiển thị
-    setChatSessions([
-      {
-        id: "chat_001",
-        customerName: "Nguyễn Thị Lan",
-        customerEmail: "lan.nguyen@email.com",
-        customerPhone: "0901234567",
-        status: "online",
-        lastMessage: "Tôi muốn đổi vé sang ngày mai được không ạ?",
-        lastMessageTime: "2024-12-10T14:30:00",
-        unreadCount: 3,
-        isActive: true,
-        priority: "high",
-        tags: ["Đổi vé", "Khẩn cấp"],
-      },
-    ]);
-  }, []);
+    const loadChatSessions = async () => {
+      try {
+        const sessions = await fetchChatSessions();
+        console.log("Fetched chat sessions:", sessions);
+        setChatSessions(sessions);
+      } catch (error) {
+        console.error("Failed to fetch chat sessions:", error);
+        message.error("Không thể tải danh sách cuộc trò chuyện");
+      }
+    };
 
-  // Auto scroll to bottom when new messages arrive
+    if (loggedInUser?.email) {
+      loadChatSessions();
+    }
+  }, [loggedInUser]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Filter chat sessions based on search
-  const filteredChats = chatSessions.filter(
-    (chat) =>
-      chat.customerName.toLowerCase().includes(searchText.toLowerCase()) ||
-      chat.lastMessage.toLowerCase().includes(searchText.toLowerCase())
-  );
-
   const handleChatSelect = async (chat: ChatSession) => {
     setSelectedChat(chat);
-    // TODO: Gọi API để lấy lịch sử tin nhắn
-    // const history = await getChatHistory(user.username, chat.customerName);
-    // setMessages(history);
 
-    // Dùng tạm mock data
-    setMessages([
-      {
-        id: "msg_001",
-        senderId: "customer_001",
-        senderName: "Nguyễn Thị Lan",
-        content: "Chào anh/chị, tôi cần hỗ trợ về vé xe bus ạ",
-        timestamp: "2024-12-10T14:20:00",
-        type: "text",
-        isAgent: false,
-      },
-    ]);
+    try {
+      // Gọi API để lấy lịch sử tin nhắn
+      const fetchedMessages = await fetchMessages(chat.id);
 
-    // Mark as read
-    const updatedChat = { ...chat, unreadCount: 0 };
-    // In real app, update the chat in the list
+      // Map dữ liệu từ API sang interface ChatMessage trong component
+      const mappedMessages: ChatMessage[] = fetchedMessages.map((msg) => ({
+        id: msg.id.toString(),
+        senderId: msg.sender,
+        senderName:
+          msg.sender === loggedInUser?.email
+            ? loggedInUser.email || "Nhân viên CSKH" // Tên agent nếu khớp email
+            : chat.customerName, // Tên customer nếu không khớp
+        content: msg.content,
+        timestamp: msg.timestamp,
+        type: "text", // Mặc định là text; mở rộng nếu cần
+        isAgent: msg.sender === loggedInUser?.email, // Xác định agent dựa trên sender
+      }));
+
+      setMessages(mappedMessages);
+    } catch (error) {
+      console.error("Failed to fetch messages:", error);
+      message.error("Không thể tải lịch sử tin nhắn");
+      // Fallback: Set mock data hoặc danh sách trống
+      setMessages([
+        {
+          id: "msg_001",
+          senderId: "customer_001",
+          senderName: chat.customerName,
+          content: "Chào anh/chị, tôi cần hỗ trợ về vé xe bus ạ",
+          timestamp: "2024-12-10T14:20:00",
+          type: "text",
+          isAgent: false,
+        },
+      ]);
+    }
+
+    // Mark as read locally
+    setChatSessions((prev) =>
+      prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
+    );
   };
 
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedChat || !stompClient || !loggedInUser)
-      return; // Thay user thành loggedInUser
+      return;
 
     const chatMessage = {
-      sender: loggedInUser.email, // Thay user.username thành loggedInUser.email
-      recipient: selectedChat.customerName, // Tên đăng nhập của khách hàng
+      sender: loggedInUser.email,
+      recipient: selectedChat.customerEmail,
       content: messageText.trim(),
       type: "CHAT",
     };
 
-    // Gửi tin nhắn qua WebSocket
     stompClient.send("/app/chat.private", {}, JSON.stringify(chatMessage));
 
-    // Hiển thị tin nhắn ngay lập tức trên UI của CSKH
     const newMessage: ChatMessage = {
       id: `msg_${Date.now()}`,
-      senderId: loggedInUser.userId.toString(), // Thay user.id thành loggedInUser.userId (và chuyển sang string nếu cần)
-      senderName: "Nhân viên CSKH", // Vì loggedInUser không có fullName, dùng giá trị mặc định
+      senderId: loggedInUser.userId?.toString() || "agent",
+      senderName: "Nhân viên CSKH",
       content: messageText.trim(),
       timestamp: new Date().toISOString(),
       type: "text",
@@ -191,33 +181,19 @@ export const ChatWithCustomerServicePage = () => {
 
     setMessages((prev) => [...prev, newMessage]);
     setMessageText("");
-    // Không cần message.success ở đây vì nó sẽ tạo cảm giác chậm trễ
-  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "online":
-        return "#52c41a";
-      case "away":
-        return "#faad14";
-      case "offline":
-        return "#8c8c8c";
-      default:
-        return "#8c8c8c";
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "#ff4d4f";
-      case "medium":
-        return "#fa8c16";
-      case "low":
-        return "#52c41a";
-      default:
-        return "#d9d9d9";
-    }
+    // Update last message in chat list
+    setChatSessions((prev) =>
+      prev.map((c) =>
+        c.id === selectedChat.id
+          ? {
+              ...c,
+              lastMessage: newMessage.content,
+              lastMessageTime: newMessage.timestamp,
+            }
+          : c
+      )
+    );
   };
 
   return (
@@ -240,8 +216,6 @@ export const ChatWithCustomerServicePage = () => {
               searchText={searchText}
               onSearchChange={setSearchText}
               onChatSelect={handleChatSelect}
-              getStatusColor={getStatusColor}
-              getPriorityColor={getPriorityColor}
             />
           </Col>
 
