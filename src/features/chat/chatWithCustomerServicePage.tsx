@@ -7,19 +7,8 @@ import { MessageInput } from "./components/MessageInput";
 import { EmptyState } from "./components/EmptyState";
 import { useAuthStore } from "../../stores/auth_store";
 import { Col, message, Row } from "antd";
-import type { ChatSession } from "../../app/api/chat";
+import type { ChatMessage, ChatSession } from "../../app/api/chat";
 import { fetchChatSessions, fetchMessages } from "../../app/api/chat"; // Thêm fetchMessages vào import
-
-// Mock data interfaces
-interface ChatMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  content: string;
-  timestamp: string;
-  type: "text" | "image" | "file";
-  isAgent: boolean;
-}
 
 export const ChatWithCustomerServicePage = () => {
   const { loggedInUser, accessToken } = useAuthStore();
@@ -111,41 +100,26 @@ export const ChatWithCustomerServicePage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Cập nhật handleChatSelect: Loại bỏ mapping thừa, sử dụng dữ liệu gốc từ API
   const handleChatSelect = async (chat: ChatSession) => {
     setSelectedChat(chat);
 
     try {
-      // Gọi API để lấy lịch sử tin nhắn
       const fetchedMessages = await fetchMessages(chat.id);
-
-      // Map dữ liệu từ API sang interface ChatMessage trong component
-      const mappedMessages: ChatMessage[] = fetchedMessages.map((msg) => ({
-        id: msg.id.toString(),
-        senderId: msg.sender,
-        senderName:
-          msg.sender === loggedInUser?.email
-            ? loggedInUser.email || "Nhân viên CSKH" // Tên agent nếu khớp email
-            : chat.customerName, // Tên customer nếu không khớp
-        content: msg.content,
-        timestamp: msg.timestamp,
-        type: "text", // Mặc định là text; mở rộng nếu cần
-        isAgent: msg.sender === loggedInUser?.email, // Xác định agent dựa trên sender
-      }));
-
-      setMessages(mappedMessages);
+      // Không map thêm isAgent hoặc senderName, giữ nguyên fetchedMessages (đã là ChatMessage[] từ API)
+      setMessages(fetchedMessages);
     } catch (error) {
       console.error("Failed to fetch messages:", error);
       message.error("Không thể tải lịch sử tin nhắn");
-      // Fallback: Set mock data hoặc danh sách trống
+      // Fallback: Sử dụng dữ liệu mock khớp với ChatMessage từ API
       setMessages([
         {
-          id: "msg_001",
-          senderId: "customer_001",
-          senderName: chat.customerName,
+          id: 1, // number, khớp với API
+          sender: "customer@example.com", // string, khớp với API
           content: "Chào anh/chị, tôi cần hỗ trợ về vé xe bus ạ",
           timestamp: "2024-12-10T14:20:00",
-          type: "text",
-          isAgent: false,
+          type: "CHAT", // khớp với API
+          // Không cần recipient hoặc roomId nếu không có
         },
       ]);
     }
@@ -156,6 +130,7 @@ export const ChatWithCustomerServicePage = () => {
     );
   };
 
+  // Cập nhật handleSendMessage: Đảm bảo newMessage khớp với ChatMessage từ API
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedChat || !stompClient || !loggedInUser)
       return;
@@ -169,14 +144,13 @@ export const ChatWithCustomerServicePage = () => {
 
     stompClient.send("/app/chat.private", {}, JSON.stringify(chatMessage));
 
+    // Tạo newMessage khớp với ChatMessage từ API (không thêm isAgent hoặc senderName)
     const newMessage: ChatMessage = {
-      id: `msg_${Date.now()}`,
-      senderId: loggedInUser.userId?.toString() || "agent",
-      senderName: "Nhân viên CSKH",
+      id: Date.now(), // number, giả định ID tạm thời
+      sender: loggedInUser.email,
       content: messageText.trim(),
       timestamp: new Date().toISOString(),
-      type: "text",
-      isAgent: true,
+      type: "CHAT",
     };
 
     setMessages((prev) => [...prev, newMessage]);
@@ -231,7 +205,11 @@ export const ChatWithCustomerServicePage = () => {
           >
             {selectedChat ? (
               <>
-                <ChatMessageList messages={messages} />
+                <ChatMessageList
+                  messages={messages}
+                  loggedInUser={loggedInUser}
+                  customerName={selectedChat.customerName}
+                />
                 <MessageInput
                   messageText={messageText}
                   onMessageChange={setMessageText}
