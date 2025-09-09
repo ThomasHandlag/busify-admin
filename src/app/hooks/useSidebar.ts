@@ -102,6 +102,10 @@ export const useSidebar = () => {
       case "revenue-analytics":
         navigate("/admin/revenue-analytics");
         break;
+
+      case "chat-customer-service":
+        navigate("/customer-service/chat");
+        break;
       default:
         // Can add navigation for other keys here or use a dynamic approach
         console.log("Navigate to:", key);

@@ -47,8 +47,9 @@ export interface BookingStatusCount {
 
 export interface PaginatedBusOperators {
   content: Array<{
-    operatorId: number;
-    operatorName: string;
+
+    id: number;
+    name: string;
     email: string;
   }>;
   empty: boolean;

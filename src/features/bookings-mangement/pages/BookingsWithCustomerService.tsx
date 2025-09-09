@@ -119,13 +119,14 @@ const BookingsWithCustomerService: React.FC = () => {
     loadBookings();
   };
 
-  const handleTableChange = (paginationConfig: any) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleTableChange = (pagination: any, filters: any, sorter: any) => {
     const formValues = form.getFieldsValue();
     const { bookingCode, routeName, status, fromDate, toDate } = formValues;
 
     const searchParams: SearchBookingParams = {
-      page: paginationConfig.current,
-      size: paginationConfig.pageSize,
+      page: pagination.current,
+      size: pagination.pageSize,
     };
 
     if (bookingCode) searchParams.bookingCode = bookingCode;
@@ -133,6 +134,13 @@ const BookingsWithCustomerService: React.FC = () => {
     if (status) searchParams.status = status;
     if (fromDate) searchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
     if (toDate) searchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
+
+    // Update local pagination state first
+    setPagination({
+      current: pagination.current,
+      pageSize: pagination.pageSize,
+      total: pagination.total,
+    });
 
     loadBookings(searchParams);
   };
@@ -176,13 +184,41 @@ const BookingsWithCustomerService: React.FC = () => {
     }
   };
 
+  const handleDeleteBooking = async () => {
+    // Reload danh sách từ server để đảm bảo dữ liệu mới nhất
+    try {
+      const formValues = form.getFieldsValue();
+      const { bookingCode, routeName, status, fromDate, toDate } = formValues;
+
+      const searchParams: SearchBookingParams = {
+        page: pagination.current,
+        size: pagination.pageSize,
+      };
+
+      if (bookingCode) searchParams.bookingCode = bookingCode;
+      if (routeName) searchParams.route = routeName;
+      if (status) searchParams.status = status;
+      if (fromDate)
+        searchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
+      if (toDate) searchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
+
+      await loadBookings(searchParams);
+    } catch (error) {
+      console.error("Error refreshing bookings list:", error);
+      // Không hiển thị error message để không làm phiền user
+    }
+  };
+
   const getStatusColor = (status: string) => {
+    // Support both new enum values and older "cancelled" spelling
     switch (status) {
       case "confirmed":
         return "green";
       case "pending":
         return "orange";
-      case "cancelled":
+      case "canceled_by_user":
+      case "canceled_by_operator":
+      case "cancelled": // legacy
         return "red";
       case "completed":
         return "blue";
@@ -192,18 +228,45 @@ const BookingsWithCustomerService: React.FC = () => {
   };
 
   const getStatusText = (status: string) => {
+    // Map statuses to readable Vietnamese labels
     switch (status) {
       case "confirmed":
         return "Đã xác nhận";
       case "pending":
         return "Chờ xử lý";
-      case "cancelled":
+      case "canceled_by_user":
+        return "Đã hủy (khách hàng)";
+      case "canceled_by_operator":
+        return "Đã hủy (nhà xe/nhân viên)";
+      case "cancelled": // legacy
         return "Đã hủy";
       case "completed":
         return "Hoàn thành";
       default:
         return status;
     }
+  };
+
+  // Thêm hàm helper để hiển thị Tag trạng thái gọn gàng với Tooltip
+  const renderStatusTag = (status: string) => {
+    const text = getStatusText(status);
+    return (
+      <Tooltip title={text}>
+        <Tag
+          color={getStatusColor(status)}
+          style={{
+            maxWidth: 100,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            verticalAlign: "middle",
+            display: "inline-block",
+          }}
+        >
+          {text}
+        </Tag>
+      </Tooltip>
+    );
   };
 
   const getPaymentMethodIcon = (method: string) => {
@@ -300,9 +363,7 @@ const BookingsWithCustomerService: React.FC = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status) => (
-        <Tag color={getStatusColor(status)}>{getStatusText(status)}</Tag>
-      ),
+      render: (status) => renderStatusTag(status),
       width: 120,
     },
     {
@@ -520,9 +581,8 @@ const BookingsWithCustomerService: React.FC = () => {
                 showQuickJumper: true,
                 showTotal: (total, range) =>
                   `${range[0]}-${range[1]} của ${total} đặt vé`,
-                onChange: handleTableChange,
-                onShowSizeChange: handleTableChange,
               }}
+              onChange={handleTableChange}
             />
           </>
         )}
@@ -537,6 +597,7 @@ const BookingsWithCustomerService: React.FC = () => {
           setSelectedBooking(null);
         }}
         onUpdate={handleUpdateBooking}
+        onDelete={handleDeleteBooking}
       />
     </div>
   );

@@ -55,6 +55,12 @@ export interface ComplaintDetailResponse {
   result: ComplaintDetail;
 }
 
+export interface ComplaintDetailListResponse {
+  code: number;
+  message: string;
+  result: ComplaintDetail[];
+}
+
 export interface UpdateComplaintParams {
   title?: string;
   description?: string;
@@ -94,5 +100,15 @@ export const updateComplaint = async (
     return response.data;
   } catch (error) {
     throw new Error("Không thể cập nhật khiếu nại" + error);
+  }
+};
+
+export const getComplaintByAgent = async (
+): Promise<ComplaintDetailListResponse> => {
+  try {
+    const response = await apiClient.get(`api/complaints/agent/in-progress`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Không thể lấy danh sách khiếu nại theo nhân viên" + error);
   }
 };

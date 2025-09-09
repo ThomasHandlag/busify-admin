@@ -8,6 +8,7 @@ import {
   SafetyCertificateOutlined,
   StarOutlined,
   FrownOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 
 export interface AppMenuItem {
@@ -51,6 +52,12 @@ export const menuItems: AppMenuItem[] = [
         label: "Hợp đồng",
         roles: ["ADMIN"],
       },
+      {
+        key: "chat-customer-service",
+        label: "Chat với Khách hàng",
+        icon: <MessageOutlined />,
+        roles: ["CUSTOMER_SERVICE"],
+      },
     ],
   },
 
@@ -79,6 +86,12 @@ export const menuItems: AppMenuItem[] = [
     key: "reviews-customer-service",
     label: "Quản lý đánh giá",
     icon: <StarOutlined />,
+    roles: ["CUSTOMER_SERVICE"],
+  },
+  {
+    key: "chat-customer-service",
+    label: "Chat với Khách hàng",
+    icon: <MessageOutlined />,
     roles: ["CUSTOMER_SERVICE"],
   },
 
@@ -155,6 +168,7 @@ export const menuItems: AppMenuItem[] = [
 ];
 
 export const routeToKeyMap: Record<string, string> = {
+  // admin
   "/admin": "dashboard",
   "/admin/users-management": "users",
   "/admin/bus-operators-management": "bus-operators-management",
@@ -164,10 +178,12 @@ export const routeToKeyMap: Record<string, string> = {
   "/admin/revenue-analytics": "revenue-analytics",
   "/admin/tickets": "tickets-customer-service",
   "/admin/bookings": "bookings-customer-service",
+  // customer service
   "/customer-service": "dashboard-customer-service",
   "/customer-service/tickets": "tickets-customer-service",
   "/customer-service/bookings": "bookings-customer-service",
   "/customer-service/trips": "trips-customer-service",
   "/customer-service/complaints": "complaints-customer-service",
   "/customer-service/reviews": "reviews-customer-service",
+  "/customer-service/chat": "chat-customer-service",
 };

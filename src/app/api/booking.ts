@@ -183,3 +183,13 @@ export const searchBookings = async (
     throw new Error("Không thể tìm kiếm đặt vé" + error);
   }
 };
+
+// delete booking
+export const deleteBooking = async (bookingCode: string): Promise<boolean> => {
+  try {
+    const response = await apiClient.delete(`/api/bookings/${bookingCode}`);
+    return response.status === 200;
+  } catch (error) {
+    throw new Error("Không thể xóa đặt vé" + error);
+  }
+};

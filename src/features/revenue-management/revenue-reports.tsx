@@ -579,9 +579,9 @@ const RevenueReports: React.FC = () => {
                   loading={isLoadingOperators}
                 >
                   {operatorsData?.result?.content?.map(
-                    (operator: { operatorId: number; operatorName: string; email: string }) => (
-                      <Option key={operator.operatorId} value={operator.operatorId}>
-                        {operator.operatorName}
+                    (operator: { id: number; name: string; email: string }) => (
+                      <Option key={operator.id} value={operator.id}>
+                        {operator.name}
                       </Option>
                     )
                   )}
