@@ -7,7 +7,7 @@ import { useAuthStore } from "../../stores/auth_store";
 import { Col, message, Row } from "antd";
 import type { ChatMessage, ChatSession } from "../../app/api/chat";
 import { fetchChatSessions, fetchMessages } from "../../app/api/chat";
-import { useWebSocket } from "../../stores/WebSocketContext";
+import { useWebSocket } from "../../app/provider/WebSocketContext";
 
 export const ChatWithCustomerServicePage = () => {
   const { loggedInUser } = useAuthStore();

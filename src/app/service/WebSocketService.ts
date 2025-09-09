@@ -72,7 +72,6 @@ class WebSocketService {
     if (!this.client) return;
 
     this.setConnected(true);
-    console.log("WebSocket connected successfully");
 
     // Resubscribe to all previous room subscriptions
     Object.keys(this.roomSubscriptions).forEach((roomId) => {
@@ -99,7 +98,6 @@ class WebSocketService {
 
     // Attempt to reconnect after 5 seconds
     this.reconnectTimeout = setTimeout(() => {
-      console.log("Attempting to reconnect WebSocket...");
       this.connect();
     }, 5000);
   }
@@ -123,7 +121,6 @@ class WebSocketService {
     try {
       this.client.disconnect(() => {
         this.setConnected(false);
-        console.log("WebSocket disconnected");
       });
     } catch (err) {
       console.error("Error disconnecting WebSocket:", err);
@@ -153,7 +150,6 @@ class WebSocketService {
       (payload) => {
         try {
           const message = JSON.parse(payload.body) as ChatMessage;
-          console.log(`Received message in room ${roomId}:`, message);
 
           // Notify all handlers for this room
           this.notifyMessageHandlers(roomId, message);

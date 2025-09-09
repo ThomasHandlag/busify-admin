@@ -5,9 +5,9 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { useAuthStore } from "./auth_store";
-import type { ChatMessage } from "../app/api/chat";
-import WebSocketService from "../app/service/WebSocketService";
+import { useAuthStore } from "../../stores/auth_store";
+import type { ChatMessage } from "../api/chat";
+import WebSocketService from "../service/WebSocketService";
 
 interface WebSocketContextType {
   isConnected: boolean;

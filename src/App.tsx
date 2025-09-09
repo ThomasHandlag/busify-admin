@@ -3,7 +3,7 @@ import "./App.css";
 import { GNotifyContext } from "./app/hooks";
 import { Outlet } from "react-router-dom";
 import AppLayout from "./app/layouts/AppLayout";
-import { WebSocketProvider } from "./stores/WebSocketContext";
+import { WebSocketProvider } from "./app/provider/WebSocketContext";
 
 function App() {
   const [api, contextHolder] = useNotification();
