@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useRef, useEffect } from "react";
-import { Empty, Divider, Typography } from "antd";
+import { Empty } from "antd";
 import { MessageItem } from "./MessageItem";
 import type { ChatMessage } from "../../../app/api/chat";
 
@@ -22,6 +22,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Lọc tin nhắn - chỉ hiển thị CHAT và SYSTEM_ASSIGN
+  const filteredMessages = messages.filter(
+    (message) => message.type === "CHAT" || message.type === "SYSTEM_ASSIGN"
+  );
+
   return (
     <div
       style={{
@@ -31,7 +36,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
         background: "linear-gradient(to bottom, #f8f9fa 0%, #f0f2f5 100%)",
       }}
     >
-      {messages.length === 0 ? (
+      {filteredMessages.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px" }}>
           <Empty
             description="Chưa có tin nhắn nào"
@@ -39,32 +44,14 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
           />
         </div>
       ) : (
-        <>
-          <div style={{ textAlign: "center", margin: "20px 0" }}>
-            <Divider>
-              <Typography.Text
-                type="secondary"
-                style={{
-                  fontSize: "12px",
-                  background: "#f0f2f5",
-                  padding: "4px 12px",
-                  borderRadius: "12px",
-                }}
-              >
-                Hôm nay
-              </Typography.Text>
-            </Divider>
-          </div>
-          {messages.map((message) => (
-            // Truyền thêm loggedInUser và customerName xuống MessageItem để tính toán isAgent và senderName
-            <MessageItem
-              key={message.id}
-              message={message}
-              loggedInUser={loggedInUser}
-              customerName={customerName}
-            />
-          ))}
-        </>
+        filteredMessages.map((msg) => (
+          <MessageItem
+            key={msg.id}
+            message={msg}
+            loggedInUser={loggedInUser}
+            customerName={customerName}
+          />
+        ))
       )}
       <div ref={messagesEndRef} />
     </div>

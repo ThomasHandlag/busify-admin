@@ -1,6 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import SockJS from "sockjs-client";
-import Stomp from "stompjs";
+import { useState, useRef, useEffect } from "react";
 import { ChatList } from "./components/ChatList";
 import { ChatMessageList } from "./components/ChatMessageList";
 import { MessageInput } from "./components/MessageInput";
@@ -8,10 +6,19 @@ import { EmptyState } from "./components/EmptyState";
 import { useAuthStore } from "../../stores/auth_store";
 import { Col, message, Row } from "antd";
 import type { ChatMessage, ChatSession } from "../../app/api/chat";
-import { fetchChatSessions, fetchMessages } from "../../app/api/chat"; // Thêm fetchMessages vào import
+import { fetchChatSessions, fetchMessages } from "../../app/api/chat";
+import { useWebSocket } from "../../stores/WebSocketContext";
 
 export const ChatWithCustomerServicePage = () => {
-  const { loggedInUser, accessToken } = useAuthStore();
+  const { loggedInUser } = useAuthStore();
+  const {
+    isConnected,
+    subscribeToRoom,
+    sendMessage,
+    addMessageHandler,
+    removeMessageHandler,
+  } = useWebSocket();
+
   const [searchText, setSearchText] = useState("");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedChat, setSelectedChat] = useState<ChatSession | null>(null);
@@ -19,66 +26,51 @@ export const ChatWithCustomerServicePage = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [stompClient, setStompClient] = useState<Stomp.Client | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  // Update chat list when a new message is received
+  const updateChatWithNewMessage = (newMessage: ChatMessage) => {
+    if (!newMessage.roomId) return;
 
-  const connect = useCallback(() => {
-    if (!loggedInUser || stompClient?.connected) return;
-
-    try {
-      const socket = new SockJS(`http://localhost:8080/ws`);
-      const client = Stomp.over(socket);
-      client.debug = () => {};
-
-      client.connect(
-        { Authorization: `Bearer ${accessToken}` },
-        () => {
-          setIsConnected(true);
-          message.success("Kết nối chat thành công!");
-
-          client.subscribe(
-            `/user/${loggedInUser.email}/queue/private`,
-            (payload) => {
-              const newMessage: ChatMessage = JSON.parse(payload.body);
-              console.log("Received private message:", newMessage);
-              // Update UI: update messages if relevant, update chatSessions -> lastMessage / unreadCount
-              // Minimal behavior: append to messages if chatting with sender email matches selectedChat
-              setMessages((prev) => [...prev, newMessage]);
+    setChatSessions((prev) =>
+      prev.map((chat) =>
+        chat.id === newMessage.roomId
+          ? {
+              ...chat,
+              lastMessage: newMessage.content,
+              lastMessageTime: newMessage.timestamp,
             }
-          );
+          : chat
+      )
+    );
+  };
 
-          setStompClient(client);
-        },
-        (error) => {
-          console.error("Lỗi kết nối WebSocket:", error);
-          setIsConnected(false);
-          setTimeout(connect, 5000);
-        }
-      );
-    } catch (error) {
-      console.error("Không thể khởi tạo SockJS:", error);
-      setIsConnected(false);
-      setTimeout(connect, 5000);
-    }
-  }, [loggedInUser, stompClient, accessToken]);
+  // Message handler function
+  const handleNewMessage = (newMessage: ChatMessage) => {
+    console.log("New message received:", newMessage);
 
+    // Add to messages list if from current room
+    setMessages((prev) => [...prev, newMessage]);
+
+    // Update chat list with new message info
+    updateChatWithNewMessage(newMessage);
+  };
+
+  // Subscribe to selected room when it changes
   useEffect(() => {
-    if (loggedInUser?.email) {
-      connect();
+    if (selectedChat?.id) {
+      // Subscribe to the room
+      subscribeToRoom(selectedChat.id);
+
+      // Add message handler for this room
+      addMessageHandler(selectedChat.id, handleNewMessage);
+
+      // Clean up when component unmounts or selected chat changes
+      return () => {
+        removeMessageHandler(selectedChat.id, handleNewMessage);
+      };
     }
+  }, [selectedChat, subscribeToRoom, addMessageHandler, removeMessageHandler]);
 
-    return () => {
-      try {
-        stompClient?.disconnect(() => {
-          setIsConnected(false);
-          console.log("Đã ngắt kết nối WebSocket.");
-        });
-      } catch (err) {
-        console.error("Lỗi khi ngắt kết nối WebSocket:", err);
-      }
-    };
-  }, [loggedInUser, connect, stompClient]);
-
+  // Load chat sessions
   useEffect(() => {
     const loadChatSessions = async () => {
       try {
@@ -96,32 +88,22 @@ export const ChatWithCustomerServicePage = () => {
     }
   }, [loggedInUser]);
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Cập nhật handleChatSelect: Loại bỏ mapping thừa, sử dụng dữ liệu gốc từ API
+  // Handle chat selection
   const handleChatSelect = async (chat: ChatSession) => {
     setSelectedChat(chat);
 
     try {
       const fetchedMessages = await fetchMessages(chat.id);
-      // Không map thêm isAgent hoặc senderName, giữ nguyên fetchedMessages (đã là ChatMessage[] từ API)
       setMessages(fetchedMessages);
     } catch (error) {
       console.error("Failed to fetch messages:", error);
       message.error("Không thể tải lịch sử tin nhắn");
-      // Fallback: Sử dụng dữ liệu mock khớp với ChatMessage từ API
-      setMessages([
-        {
-          id: 1, // number, khớp với API
-          sender: "customer@example.com", // string, khớp với API
-          content: "Chào anh/chị, tôi cần hỗ trợ về vé xe bus ạ",
-          timestamp: "2024-12-10T14:20:00",
-          type: "CHAT", // khớp với API
-          // Không cần recipient hoặc roomId nếu không có
-        },
-      ]);
+      setMessages([]);
     }
 
     // Mark as read locally
@@ -130,46 +112,27 @@ export const ChatWithCustomerServicePage = () => {
     );
   };
 
-  // Cập nhật handleSendMessage: Đảm bảo newMessage khớp với ChatMessage từ API
+  // Send message
   const handleSendMessage = () => {
-    if (!messageText.trim() || !selectedChat || !stompClient || !loggedInUser)
-      return;
+    if (!messageText.trim() || !selectedChat || !loggedInUser?.email) return;
 
+    // Format message for the backend
     const chatMessage = {
       sender: loggedInUser.email,
-      recipient: selectedChat.customerEmail,
       content: messageText.trim(),
       type: "CHAT",
-    };
-
-    stompClient.send("/app/chat.private", {}, JSON.stringify(chatMessage));
-
-    // Tạo newMessage khớp với ChatMessage từ API (không thêm isAgent hoặc senderName)
-    const newMessage: ChatMessage = {
-      id: Date.now(), // number, giả định ID tạm thời
-      sender: loggedInUser.email,
-      content: messageText.trim(),
       timestamp: new Date().toISOString(),
-      type: "CHAT",
+      roomId: selectedChat.id,
     };
 
-    setMessages((prev) => [...prev, newMessage]);
-    setMessageText("");
+    // Send to the room-specific endpoint using the context
+    sendMessage(selectedChat.id, chatMessage);
 
-    // Update last message in chat list
-    setChatSessions((prev) =>
-      prev.map((c) =>
-        c.id === selectedChat.id
-          ? {
-              ...c,
-              lastMessage: newMessage.content,
-              lastMessageTime: newMessage.timestamp,
-            }
-          : c
-      )
-    );
+    // Clear the input after sending
+    setMessageText("");
   };
 
+  // Rest of your component remains the same...
   return (
     <div style={{}}>
       <div
@@ -178,7 +141,7 @@ export const ChatWithCustomerServicePage = () => {
           background: "#fff",
           borderRadius: "8px",
           overflow: "hidden",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
           border: "1px solid #e8e8e8",
         }}
       >
