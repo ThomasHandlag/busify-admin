@@ -347,7 +347,6 @@ import {
 import YearlyRevenueCharts from "./components/YearlyRevenueCharts";
 import TopCharts from "./components/TopCharts";
 import MonthlyReportCharts from "./components/MonthlyReportCharts";
-import WeeklyReportCharts from "./components/WeeklyReportCharts";
 
 const { YearPicker, MonthPicker } = DatePicker;
 const { Option } = Select;
