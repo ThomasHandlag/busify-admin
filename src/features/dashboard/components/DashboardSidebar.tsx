@@ -20,13 +20,6 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const navigate = useNavigate();
   const { isConnected } = useWebSocket();
 
-  const metricCardStyle: React.CSSProperties = {
-    borderRadius: 12,
-    boxShadow: "0 6px 18px rgba(20,20,30,0.04)",
-    background: "#fff",
-    padding: 14,
-  };
-
   // Only show the 3 most recent chat sessions
   const recentSessions = chatSessions.slice(0, 3);
 
@@ -36,42 +29,38 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   };
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }} size="middle">
-      <Card
-        style={{ ...metricCardStyle }}
-        title={
-          <div
+    <Card title="Recent Chats" size="small" styles={{ body: { padding: 12 } }}>
+      <Space direction="vertical" style={{ width: "100%" }} size="middle">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingBottom: 8,
+          }}
+        >
+          <span>Chat trực tiếp</span>
+          <span
             style={{
+              fontSize: "12px",
+              color: isConnected ? "#52c41a" : "#ff4d4f",
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
             }}
           >
-            <span>Chat trực tiếp</span>
             <span
               style={{
-                fontSize: "12px",
-                color: isConnected ? "#52c41a" : "#ff4d4f",
-                display: "flex",
-                alignItems: "center",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: isConnected ? "#52c41a" : "#ff4d4f",
+                display: "inline-block",
+                marginRight: "4px",
               }}
-            >
-              <span
-                style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  background: isConnected ? "#52c41a" : "#ff4d4f",
-                  display: "inline-block",
-                  marginRight: "4px",
-                }}
-              />
-              {isConnected ? "Đã kết nối" : "Mất kết nối"}
-            </span>
-          </div>
-        }
-        bodyStyle={{ padding: 8 }}
-      >
+            />
+            {isConnected ? "Đã kết nối" : "Mất kết nối"}
+          </span>
+        </div>
         {chatLoading ? (
           <div style={{ padding: "20px", textAlign: "center" }}>
             <Spin size="small" />
@@ -151,7 +140,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </Button>
           </div>
         )}
-      </Card>
-    </Space>
+      </Space>
+    </Card>
   );
 };

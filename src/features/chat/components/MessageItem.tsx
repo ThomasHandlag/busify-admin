@@ -22,7 +22,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const senderName = isAgent
     ? loggedInUser?.email || "Nhân viên CSKH"
     : customerName;
-  console.log("Rendering MessageItem:", { message, isAgent, senderName });
 
   return (
     <div
