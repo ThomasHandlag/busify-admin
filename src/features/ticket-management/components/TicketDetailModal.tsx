@@ -11,6 +11,7 @@ import {
   message,
   Spin,
   Alert,
+  Form,
 } from "antd";
 import {
   UserOutlined,
@@ -28,6 +29,7 @@ import {
   deleteTicket,
 } from "../../../app/api/ticket";
 import dayjs from "dayjs";
+import MailSenderModal from "../../../components/MailSenderModal";
 
 const { Title, Text } = Typography;
 
@@ -58,6 +60,8 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ticketDetail, setTicketDetail] = useState<TicketDetail | null>(null);
+  const [mailForm] = Form.useForm();
+  const [isMailModalVisible, setIsMailModalVisible] = useState(false);
 
   useEffect(() => {
     if (visible && ticket) {
@@ -119,7 +123,7 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   };
 
   const handleSendEmail = () => {
-    message.success("Đã gửi thông tin vé qua email");
+    setIsMailModalVisible(true);
   };
 
   const handleDeleteTicket = () => {
@@ -311,45 +315,60 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   };
 
   return (
-    <Modal
-      title={
-        <Space>
-          <UserOutlined />
-          <span>Chi tiết vé - {ticket.ticketCode}</span>
-        </Space>
-      }
-      open={visible}
-      onCancel={onClose}
-      width={800}
-      footer={[
-        <Button
-          key="delete"
-          danger
-          type="primary"
-          icon={<DeleteOutlined />}
-          onClick={handleDeleteTicket}
-        >
-          Hủy vé
-        </Button>,
-        <Button key="email" icon={<MailOutlined />} onClick={handleSendEmail}>
-          Gửi email
-        </Button>,
-        <Button
-          key="print"
-          icon={<PrinterOutlined />}
-          onClick={handlePrintTicket}
-        >
-          In vé
-        </Button>,
-        <Button key="close" onClick={onClose}>
-          Đóng
-        </Button>,
-      ]}
-    >
-      <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
-        {renderContent()}
-      </div>
-    </Modal>
+    <>
+      <Modal
+        title={
+          <Space>
+            <UserOutlined />
+            <span>Chi tiết vé - {ticket.ticketCode}</span>
+          </Space>
+        }
+        open={visible}
+        onCancel={onClose}
+        width={800}
+        footer={[
+          <Button
+            key="delete"
+            danger
+            type="primary"
+            icon={<DeleteOutlined />}
+            onClick={handleDeleteTicket}
+          >
+            Hủy vé
+          </Button>,
+          <Button key="email" icon={<MailOutlined />} onClick={handleSendEmail}>
+            Gửi email
+          </Button>,
+          <Button
+            key="print"
+            icon={<PrinterOutlined />}
+            onClick={handlePrintTicket}
+          >
+            In vé
+          </Button>,
+          <Button key="close" onClick={onClose}>
+            Đóng
+          </Button>,
+        ]}
+      >
+        <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+          {renderContent()}
+        </div>
+      </Modal>
+
+      <MailSenderModal
+        isVisible={isMailModalVisible}
+        setIsVisible={setIsMailModalVisible}
+        form={mailForm}
+        defaultRecipient={ticketDetail?.booking?.customerEmail || ""}
+        defaultSubject={`Thông tin vé ${ticket?.ticketCode} - Busify`}
+        defaultUserName={ticketDetail?.passengerName || ""}
+        caseNumber={ticket?.ticketCode}
+        onSuccess={() => {
+          message.success("Đã gửi email thành công!");
+        }}
+      />
+    </>
   );
 };
 

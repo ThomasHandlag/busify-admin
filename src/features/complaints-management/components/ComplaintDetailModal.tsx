@@ -8,14 +8,11 @@ import {
   Tag,
   Space,
   Button,
-  Form,
-  Input,
-  Select,
-  message,
   Card,
   Row,
   Col,
   Avatar,
+  message,
 } from "antd";
 import {
   UserOutlined,
@@ -26,38 +23,28 @@ import {
   MailOutlined,
   BookOutlined,
   CarOutlined,
-  EditOutlined,
-  SaveOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
   getComplaintById,
-  updateComplaint,
   type ComplaintDetail,
 } from "../../../app/api/complaint";
 
-const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
-const { Option } = Select;
+const { Text, Paragraph } = Typography;
 
 interface ComplaintDetailModalProps {
   complaint: any;
   visible: boolean;
   onClose: () => void;
-  onUpdate: (updatedComplaint: any) => void;
 }
 
 const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
   complaint,
   visible,
   onClose,
-  onUpdate,
 }) => {
-  const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [complaintDetail, setComplaintDetail] =
     useState<ComplaintDetail | null>(null);
 
@@ -68,14 +55,8 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
         try {
           const response = await getComplaintById(complaint.id);
           setComplaintDetail(response.result);
-          form.setFieldsValue({
-            status: response.result.status,
-            title: response.result.title,
-            description: response.result.description,
-          });
         } catch (error) {
-          message.error("Không thể tải thông tin chi tiết khiếu nại");
-          console.error("Error fetching complaint detail:", error);
+          message.error("Không thể tải thông tin chi tiết khiếu nại: " + error);
         } finally {
           setDetailLoading(false);
         }
@@ -83,33 +64,7 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
     };
 
     fetchComplaintDetail();
-  }, [complaint, visible, form]);
-
-  const handleUpdate = async (values: any) => {
-    if (!complaintDetail) return;
-
-    setLoading(true);
-    try {
-      const response = await updateComplaint(complaintDetail.id, values);
-      const updatedComplaint = {
-        ...complaint,
-        ...values,
-        updatedAt: response.result.updatedAt,
-      };
-
-      onUpdate(updatedComplaint);
-      setIsEditing(false);
-
-      // Update local state with new data
-      setComplaintDetail(response.result);
-      message.success("Khiếu nại đã được cập nhật thành công");
-    } catch (error) {
-      message.error("Không thể cập nhật khiếu nại");
-      console.error("Error updating complaint:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [complaint, visible]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -188,33 +143,9 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
       width={900}
       footer={
         <Space>
-          {!isEditing ? (
-            <>
-              <Button icon={<CloseOutlined />} onClick={onClose}>
-                Đóng
-              </Button>
-              <Button
-                type="primary"
-                icon={<EditOutlined />}
-                onClick={() => setIsEditing(true)}
-                disabled={detailLoading || !complaintDetail}
-              >
-                Xử lý khiếu nại
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button onClick={() => setIsEditing(false)}>Hủy</Button>
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                loading={loading}
-                onClick={() => form.submit()}
-              >
-                Lưu thay đổi
-              </Button>
-            </>
-          )}
+          <Button icon={<CloseOutlined />} onClick={onClose}>
+            Đóng
+          </Button>
         </Space>
       }
     >
@@ -231,7 +162,7 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
               Không thể tải thông tin chi tiết khiếu nại
             </Text>
           </div>
-        ) : !isEditing ? (
+        ) : (
           <>
             {/* Complaint Information */}
             <Card title="Thông tin khiếu nại" style={{ marginBottom: "16px" }}>
@@ -383,61 +314,6 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
               </Descriptions>
             </Card>
           </>
-        ) : (
-          <Card title="Xử lý khiếu nại">
-            <Form form={form} layout="vertical" onFinish={handleUpdate}>
-              <Row gutter={16}>
-                <Col span={24}>
-                  <Form.Item
-                    name="status"
-                    label="Trạng thái xử lý"
-                    rules={[
-                      { required: true, message: "Vui lòng chọn trạng thái" },
-                    ]}
-                  >
-                    <Select placeholder="Chọn trạng thái xử lý">
-                      <Option value="pending">Chờ xử lý</Option>
-                      <Option value="in_progress">Đang xử lý</Option>
-                      <Option value="resolved">Đã giải quyết</Option>
-                      <Option value="rejected">Từ chối</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Row gutter={16}>
-                <Col span={24}>
-                  <Form.Item
-                    name="title"
-                    label="Tiêu đề khiếu nại"
-                    rules={[
-                      { required: true, message: "Vui lòng nhập tiêu đề" },
-                    ]}
-                  >
-                    <Input placeholder="Nhập tiêu đề khiếu nại" />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Row gutter={16}>
-                <Col span={24}>
-                  <Form.Item
-                    name="description"
-                    label="Nội dung xử lý"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Vui lòng nhập nội dung xử lý",
-                      },
-                    ]}
-                  >
-                    <TextArea
-                      rows={4}
-                      placeholder="Nhập kết quả xử lý, giải pháp hoặc lý do từ chối..."
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Form>
-          </Card>
         )}
       </div>
     </Modal>

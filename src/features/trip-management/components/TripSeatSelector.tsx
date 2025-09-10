@@ -13,6 +13,8 @@ const PALETTE = {
   surface: "#f5f7fb",
   muted: "#6b7280",
   border: "#d9d9d9",
+  disabled: "#d9d9d9",
+  booked: "#4299e1", // blue color for booked seats in disabled trips
 };
 
 interface SeatConfig {
@@ -27,15 +29,21 @@ interface TripSeatSelectorProps {
   onSeatSelect: (seatId: string) => void;
   availableSeats: number;
   seatStatuses?: SeatStatus[]; // Add new prop for seat statuses from API
+  tripStatus?: string; // Add new prop for trip status
 }
 
 const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
   seatConfig,
   selectedSeats,
   onSeatSelect,
-  availableSeats,
   seatStatuses = [], // Default to empty array
+  tripStatus = "scheduled", // Default to scheduled
 }) => {
+  // Check if trip is bookable based on status
+  const isTripBookable = React.useMemo(() => {
+    return !["cancelled", "delayed", "departed"].includes(tripStatus);
+  }, [tripStatus]);
+
   // Map seat statuses from API to a more efficient lookup
   const seatStatusMap = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -45,35 +53,6 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
     return map;
   }, [seatStatuses]);
 
-  // Generate unavailable seats based on API data if available, or fallback to random generation
-  const unavailableSeats = React.useMemo(() => {
-    // If we have seat statuses from API
-    if (seatStatuses.length > 0) {
-      const seats = new Set<string>();
-      seatStatuses.forEach((seat) => {
-        if (seat.status !== "available") {
-          seats.add(seat.seatNumber);
-        }
-      });
-      return seats;
-    }
-
-    // Fallback to random generation if no API data
-    const totalSeats = seatConfig.cols * seatConfig.rows * seatConfig.floors;
-    const unavailableCount = totalSeats - availableSeats;
-    const seats = new Set<string>();
-
-    while (seats.size < unavailableCount) {
-      const floor = 1; // We only have one floor as per the mock data
-      const row = Math.floor(Math.random() * seatConfig.rows) + 1;
-      const col = Math.floor(Math.random() * seatConfig.cols) + 1;
-      const seatId = `${floor}-${row}-${col}`;
-      seats.add(seatId);
-    }
-
-    return seats;
-  }, [seatConfig, availableSeats, seatStatuses]);
-
   const getSeatLabel = (row: number, col: number): string => {
     return `${String.fromCharCode(64 + row)}${col}`;
   };
@@ -82,37 +61,81 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
     const seatId = `${floor}-${row}-${col}`;
     const seatLabel = getSeatLabel(row, col);
 
-    // Check seat status from API first, then fallback to generated data
-    const isUnavailable = seatStatusMap.has(seatLabel)
-      ? seatStatusMap.get(seatLabel) !== "available"
-      : unavailableSeats.has(seatId);
+    // Get seat status from the map
+    const status = seatStatusMap.get(seatLabel);
+    const isUnavailable = status !== undefined && status !== "available";
     const isSelected = selectedSeats.includes(seatId);
+
+    // Check if this is a booked or locked seat that needs special coloring
+    const isBookedOrLocked = status === "booked" || status === "locked";
+
+    // For non-bookable trips, determine the appropriate styling
+    let seatStyle = {};
+    let seatType = "default";
+    let seatDisabled = isUnavailable;
+
+    if (!isTripBookable) {
+      // Trip is not bookable (cancelled, delayed, departed)
+      seatDisabled = true; // All seats disabled
+
+      if (isBookedOrLocked) {
+        // Booked or locked seats in a non-bookable trip get blue color
+        seatStyle = {
+          backgroundColor: PALETTE.booked,
+          color: "white",
+          border: `1px solid ${PALETTE.booked}`,
+        };
+      } else {
+        // Other seats get gray color
+        seatStyle = {
+          backgroundColor: PALETTE.disabled,
+          color: PALETTE.muted,
+          border: `1px dashed ${PALETTE.border}`,
+        };
+      }
+    } else {
+      // Trip is bookable - use normal styling
+      seatStyle = {
+        backgroundColor: isUnavailable
+          ? "#f5f5f5"
+          : isSelected
+          ? "#1890ff"
+          : "white",
+        color: isUnavailable
+          ? "#999"
+          : isSelected
+          ? "white"
+          : "rgba(0, 0, 0, 0.65)",
+        border: isUnavailable ? "1px dashed #d9d9d9" : "1px solid #d9d9d9",
+      };
+      seatType = isSelected ? "primary" : "default";
+    }
 
     return (
       <Col span={6} key={seatId} style={{ padding: 4 }}>
-        <Tooltip title={isUnavailable ? "Ghế đã được đặt" : `Ghế ${seatLabel}`}>
+        <Tooltip
+          title={
+            !isTripBookable
+              ? isBookedOrLocked
+                ? "Ghế đã được đặt"
+                : "Chuyến đi không khả dụng"
+              : isUnavailable
+              ? "Ghế đã được đặt"
+              : `Ghế ${seatLabel}`
+          }
+        >
           <Button
-            type={isSelected ? "primary" : "default"}
-            danger={isUnavailable}
-            disabled={isUnavailable}
+            type={seatType}
+            danger={isUnavailable && isTripBookable}
+            disabled={seatDisabled}
             style={{
               width: "100%",
               height: 40,
-              backgroundColor: isUnavailable
-                ? "#f5f5f5"
-                : isSelected
-                ? "#1890ff"
-                : "white",
-              color: isUnavailable
-                ? "#999"
-                : isSelected
-                ? "white"
-                : "rgba(0, 0, 0, 0.65)",
-              border: isUnavailable
-                ? "1px dashed #d9d9d9"
-                : "1px solid #d9d9d9",
+              ...seatStyle,
             }}
-            onClick={() => !isUnavailable && onSeatSelect(seatId)}
+            onClick={() =>
+              isTripBookable && !isUnavailable && onSeatSelect(seatId)
+            }
           >
             {seatLabel}
           </Button>
@@ -145,42 +168,73 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
     <div className="trip-seat-selector">
       {/* Legend */}
       <div style={{ marginBottom: 16 }}>
-        <Space>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <div
-              style={{
-                width: 16,
-                height: 16,
-                backgroundColor: "white",
-                border: `1px solid ${PALETTE.border}`,
-                marginRight: 8,
-              }}
-            ></div>
-            <Text>Ghế trống</Text>
-          </div>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <div
-              style={{
-                width: 16,
-                height: 16,
-                backgroundColor: PALETTE.primary,
-                marginRight: 8,
-              }}
-            ></div>
-            <Text>Ghế đã chọn</Text>
-          </div>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <div
-              style={{
-                width: 16,
-                height: 16,
-                backgroundColor: PALETTE.surface,
-                border: `1px dashed ${PALETTE.border}`,
-                marginRight: 8,
-              }}
-            ></div>
-            <Text>Ghế đã đặt</Text>
-          </div>
+        <Space wrap>
+          {isTripBookable && (
+            <>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    backgroundColor: "white",
+                    border: `1px solid ${PALETTE.border}`,
+                    marginRight: 8,
+                  }}
+                ></div>
+                <Text>Ghế trống</Text>
+              </div>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    backgroundColor: PALETTE.primary,
+                    marginRight: 8,
+                  }}
+                ></div>
+                <Text>Ghế đã chọn</Text>
+              </div>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    backgroundColor: PALETTE.surface,
+                    border: `1px dashed ${PALETTE.border}`,
+                    marginRight: 8,
+                  }}
+                ></div>
+                <Text>Ghế đã đặt</Text>
+              </div>
+            </>
+          )}
+          {!isTripBookable && (
+            <>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    backgroundColor: PALETTE.disabled,
+                    border: `1px solid ${PALETTE.border}`,
+                    marginRight: 8,
+                  }}
+                ></div>
+                <Text>Ghế không khả dụng</Text>
+              </div>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    backgroundColor: PALETTE.booked,
+                    marginRight: 8,
+                  }}
+                ></div>
+                <Text>Ghế đã đặt trước đó</Text>
+              </div>
+            </>
+          )}
         </Space>
       </div>
 

@@ -19,6 +19,12 @@ export interface TripSeatsResponse {
 export const getTripSeats = async (
   tripId: number
 ): Promise<TripSeatsResponse> => {
-  const response = await apiClient.get(`/api/trip-seats/${tripId}`);
-  return response.data;
+  try {
+    const response = await apiClient.get(`/api/trip-seats/${tripId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching trip seats:", error);
+    throw error; // hoặc return giá trị mặc định tuỳ theo nhu cầu
+  }
 };
+
