@@ -8,6 +8,7 @@ import { Col, message, Row } from "antd";
 import type { ChatMessage, ChatSession } from "../../app/api/chat";
 import { fetchChatSessions, fetchMessages } from "../../app/api/chat";
 import { useWebSocket } from "../../app/provider/WebSocketContext";
+import { getVNISOString } from "../../utils/time_stamp";
 
 export const ChatWithCustomerServicePage = () => {
   const { loggedInUser } = useAuthStore();
@@ -121,9 +122,12 @@ export const ChatWithCustomerServicePage = () => {
       sender: loggedInUser.email,
       content: messageText.trim(),
       type: "CHAT",
-      timestamp: new Date().toISOString(),
+      // đổi qua giờ vn
+      timestamp: getVNISOString(),
       roomId: selectedChat.id,
     };
+
+    console.log("Sending message:", chatMessage.timestamp);
 
     // Send to the room-specific endpoint using the context
     sendMessage(selectedChat.id, chatMessage);
