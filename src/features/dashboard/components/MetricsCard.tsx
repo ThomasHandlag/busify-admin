@@ -7,8 +7,6 @@ import {
   Space,
   Input,
   Segmented,
-  Typography,
-  Progress,
 } from "antd";
 import {
   ExclamationCircleOutlined,
@@ -16,7 +14,6 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   SearchOutlined,
-  StarOutlined,
 } from "@ant-design/icons";
 
 interface StatsData {
@@ -50,14 +47,9 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
     padding: 14,
   };
 
-  const smallTextStyle: React.CSSProperties = {
-    color: "#7f8590",
-    fontSize: 12,
-  };
-
   return (
     <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-      <Col xs={24} sm={16}>
+      <Col xs={24}>
         <Card style={{ ...metricCardStyle }}>
           <div
             style={{
@@ -121,53 +113,6 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
                 value={selectedStatus}
                 onChange={(v) => onStatusChange(String(v))}
               />
-            </div>
-          </div>
-        </Card>
-      </Col>
-
-      <Col xs={24} sm={8}>
-        <Card style={{ ...metricCardStyle }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div>
-              <Typography.Text type="secondary">
-                Thời gian phản hồi
-              </Typography.Text>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 6,
-                }}
-              >
-                <Typography.Title level={4} style={{ margin: 0 }}>
-                  {stats.avgResponseTime}h
-                </Typography.Title>
-                <div style={{ width: 110 }}>
-                  <Progress
-                    percent={75}
-                    showInfo={false}
-                    size="small"
-                    strokeColor="#1890ff"
-                  />
-                </div>
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <StarOutlined style={{ color: "#fadb14", fontSize: 20 }} />
-              <div style={{ marginTop: 6 }}>
-                <Typography.Text strong>
-                  {stats.customerSatisfaction}/5
-                </Typography.Text>
-                <div style={smallTextStyle}>Hài lòng</div>
-              </div>
             </div>
           </div>
         </Card>
