@@ -6,7 +6,6 @@ import dayjs from "dayjs";
 import { MetricsCard } from "../components/MetricsCard";
 import { TicketsList } from "../components/TicketsList";
 import { DashboardSidebar } from "../components/DashboardSidebar";
-import type { ChatSession } from "../types";
 import {
   getComplaintByAgent,
   type ComplaintDetail,
@@ -15,6 +14,8 @@ import {
 import { DashboardHeader } from "../components/DashboardHeader";
 import ComplaintDetailModal from "../../complaints-management/components/ComplaintDetailModal";
 import MailSenderModal from "../../../components/MailSenderModal"; // Thêm import
+import type { ChatSession } from "../../../app/api/chat";
+import { fetchRecentChatSessions } from "../../../app/api/chat"; // Thêm import
 
 export const DashboardWithCustomerService = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -33,6 +34,11 @@ export const DashboardWithCustomerService = () => {
   const [selectedTicketForEmail, setSelectedTicketForEmail] =
     useState<ComplaintDetail | null>(null);
   const [mailForm] = Form.useForm(); // Form instance cho modal
+
+  // Thêm state cho chat sessions
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [chatLoading, setChatLoading] = useState<boolean>(true);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
@@ -58,36 +64,27 @@ export const DashboardWithCustomerService = () => {
     }
   }, []);
 
+  // Hàm fetch chat sessions
+  const fetchChatSessions = useCallback(async () => {
+    setChatLoading(true);
+    setChatError(null);
+    try {
+      const sessions = await fetchRecentChatSessions();
+      setChatSessions(sessions);
+    } catch (err: any) {
+      const errorMessage =
+        err.message || "Không thể tải danh sách chat sessions.";
+      setChatError(errorMessage);
+      message.error(errorMessage);
+    } finally {
+      setChatLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchComplaints();
-  }, [fetchComplaints]);
-
-  const mockChatSessions: ChatSession[] = [
-    {
-      id: "CH001",
-      customerName: "Nguyễn Thị Lan",
-      status: "active",
-      lastMessage: "Tôi muốn đổi vé sang ngày mai được không?",
-      unreadCount: 2,
-      startTime: "2024-12-10T14:15:00",
-    },
-    {
-      id: "CH002",
-      customerName: "Trần Văn Khải",
-      status: "waiting",
-      lastMessage: "Cảm ơn, tôi đã hiểu rồi",
-      unreadCount: 0,
-      startTime: "2024-12-10T13:45:00",
-    },
-    {
-      id: "CH003",
-      customerName: "Lê Thị Mai",
-      status: "active",
-      lastMessage: "Xe có wifi không ạ?",
-      unreadCount: 1,
-      startTime: "2024-12-10T14:30:00",
-    },
-  ];
+    fetchChatSessions(); // Gọi fetch chat sessions
+  }, [fetchComplaints, fetchChatSessions]);
 
   const filteredTickets = complaints.filter((ticket) => {
     const matchesStatus =
@@ -221,7 +218,7 @@ export const DashboardWithCustomerService = () => {
         <Col xs={24} lg={8}>
           <DashboardSidebar
             customerSatisfaction={stats.customerSatisfaction}
-            chatSessions={mockChatSessions}
+            chatSessions={chatSessions} // Sử dụng state thay vì mock
           />
         </Col>
       </Row>

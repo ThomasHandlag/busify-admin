@@ -1,16 +1,7 @@
 import React from "react";
-import {
-  Card,
-  Space,
-  Typography,
-  List,
-  Avatar,
-  Badge,
-  Button,
-  Tag,
-} from "antd";
+import { Card, Space, Typography, List, Avatar, Button } from "antd";
 import { UserOutlined } from "@ant-design/icons";
-import type { ChatSession } from "../types";
+import type { ChatSession } from "../../../app/api/chat";
 
 interface DashboardSidebarProps {
   customerSatisfaction: number;
@@ -46,11 +37,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               ]}
             >
               <List.Item.Meta
-                avatar={
-                  <Badge count={item.unreadCount}>
-                    <Avatar size="small" icon={<UserOutlined />} />
-                  </Badge>
-                }
+                avatar={<Avatar size="small" icon={<UserOutlined />} />}
                 title={
                   <div
                     style={{
@@ -66,7 +53,6 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                         {item.customerName}
                       </Typography.Text>
                     </div>
-                    <Tag style={{ fontSize: 11 }}>{item.status}</Tag>
                   </div>
                 }
                 description={
