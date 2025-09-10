@@ -1,10 +1,9 @@
-import React from "react";
+
+
+import React, { useState, useEffect, useRef } from "react";
 import { Card, Row, Col } from "antd";
 import { Column, Line, Pie } from "@ant-design/charts";
-import type {
-  YearlyRevenueByMonth,
-  BookingStatusCount,
-} from "../../../app/api/revenue";
+import type { YearlyRevenueByMonth, BookingStatusCount } from "../../../app/api/revenue";
 
 interface YearlyRevenueChartsProps {
   yearlyData: YearlyRevenueByMonth[] | undefined;
@@ -17,6 +16,29 @@ const YearlyRevenueCharts: React.FC<YearlyRevenueChartsProps> = ({
   bookingStatusData,
   formatCurrency,
 }) => {
+  const [key, setKey] = useState(0); // Để buộc tái render
+  const revenueRef = useRef<HTMLDivElement>(null);
+  const passengersRef = useRef<HTMLDivElement>(null);
+  const bookingRef = useRef<HTMLDivElement>(null);
+
+  // Buộc tái render khi dữ liệu thay đổi
+  useEffect(() => {
+    setKey((prev) => prev + 1);
+  }, [yearlyData, bookingStatusData]);
+
+  // Theo dõi kích thước container và cập nhật
+  useEffect(() => {
+    const observer = new ResizeObserver(() => {
+      setKey((prev) => prev + 1); // Tái render khi kích thước thay đổi
+    });
+
+    if (revenueRef.current) observer.observe(revenueRef.current);
+    if (passengersRef.current) observer.observe(passengersRef.current);
+    if (bookingRef.current) observer.observe(bookingRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
   // Cấu hình biểu đồ cột doanh thu
   const revenueColumnConfig = {
     data:
@@ -47,6 +69,7 @@ const YearlyRevenueCharts: React.FC<YearlyRevenueChartsProps> = ({
         value: formatCurrency(datum.revenue),
       }),
     },
+    autoFit: true, // Đảm bảo tự động điều chỉnh kích thước
   };
 
   // Cấu hình biểu đồ line hành khách
@@ -81,6 +104,7 @@ const YearlyRevenueCharts: React.FC<YearlyRevenueChartsProps> = ({
         value: `${datum.passengers} người (${datum.trips} chuyến)`,
       }),
     },
+    autoFit: true, // Đảm bảo tự động điều chỉnh kích thước
   };
 
   // Cấu hình biểu đồ tròn booking status
@@ -123,25 +147,68 @@ const YearlyRevenueCharts: React.FC<YearlyRevenueChartsProps> = ({
     legend: {
       position: "bottom" as const,
     },
+    autoFit: true, // Đảm bảo tự động điều chỉnh kích thước
   };
 
   return (
     <Row gutter={16} style={{ marginBottom: "24px" }}>
       <Col xs={24} lg={8}>
         <Card title="Doanh thu theo tháng" size="small">
-          <Column {...revenueColumnConfig} height={300} />
+          <div ref={revenueRef} style={{ width: "100%", height: "300px", overflow: "hidden" }}>
+            {yearlyData && yearlyData.length > 0 ? (
+              <Column {...revenueColumnConfig} height={300} key={`revenue-${key}`} />
+            ) : (
+              <div style={{ 
+                display: "flex", 
+                justifyContent: "center", 
+                alignItems: "center", 
+                height: "100%",
+                color: "#999"
+              }}>
+                <p>Chưa có dữ liệu doanh thu</p>
+              </div>
+            )}
+          </div>
         </Card>
       </Col>
 
       <Col xs={24} lg={8}>
         <Card title="Hành khách theo tháng" size="small">
-          <Line {...passengersLineConfig} height={300} />
+          <div ref={passengersRef} style={{ width: "100%", height: "300px", overflow: "hidden" }}>
+            {yearlyData && yearlyData.length > 0 ? (
+              <Line {...passengersLineConfig} height={300} key={`passengers-${key}`} />
+            ) : (
+              <div style={{ 
+                display: "flex", 
+                justifyContent: "center", 
+                alignItems: "center", 
+                height: "100%",
+                color: "#999"
+              }}>
+                <p>Chưa có dữ liệu hành khách</p>
+              </div>
+            )}
+          </div>
         </Card>
       </Col>
 
       <Col xs={24} lg={8}>
         <Card title="Trạng thái Booking" size="small">
-          <Pie {...bookingStatusConfig} height={300} />
+          <div ref={bookingRef} style={{ width: "100%", height: "300px", overflow: "hidden" }}>
+            {bookingStatusData && bookingStatusData.length > 0 ? (
+              <Pie {...bookingStatusConfig} height={300} key={`booking-${key}`} />
+            ) : (
+              <div style={{ 
+                display: "flex", 
+                justifyContent: "center", 
+                alignItems: "center", 
+                height: "100%",
+                color: "#999"
+              }}>
+                <p>Chưa có dữ liệu trạng thái booking</p>
+              </div>
+            )}
+          </div>
         </Card>
       </Col>
     </Row>
