@@ -104,10 +104,9 @@ export const updateComplaint = async (
 };
 
 export const getComplaintByAgent = async (
-  email: string
 ): Promise<ComplaintDetailListResponse> => {
   try {
-    const response = await apiClient.get(`api/complaints/agent/email/${email}`);
+    const response = await apiClient.get(`api/complaints/agent/in-progress`);
     return response.data;
   } catch (error) {
     throw new Error("Không thể lấy danh sách khiếu nại theo nhân viên" + error);

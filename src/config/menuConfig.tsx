@@ -9,6 +9,8 @@ import {
   StarOutlined,
   FrownOutlined,
   MessageOutlined,
+  GiftOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 
 export interface AppMenuItem {
@@ -88,6 +90,12 @@ export const menuItems: AppMenuItem[] = [
     icon: <StarOutlined />,
     roles: ["CUSTOMER_SERVICE"],
   },
+  {
+    key: "chat-customer-service",
+    label: "Chat với Khách hàng",
+    icon: <MessageOutlined />,
+    roles: ["CUSTOMER_SERVICE"],
+  },
 
   {
     key: "revenue-management",
@@ -106,6 +114,18 @@ export const menuItems: AppMenuItem[] = [
         roles: ["ADMIN"],
       },
     ],
+  },
+  {
+    key: "promotion-management",
+    icon: <GiftOutlined />,
+    label: "Quản lý Mã giảm giá",
+    roles: ["ADMIN"],
+  },
+  {
+    key: "promotion-campaign-management",
+    icon: <ThunderboltOutlined />,
+    label: "Quản lý Chiến dịch",
+    roles: ["ADMIN"],
   },
   {
     key: "role-management",
@@ -162,6 +182,7 @@ export const menuItems: AppMenuItem[] = [
 ];
 
 export const routeToKeyMap: Record<string, string> = {
+  // admin
   "/admin": "dashboard",
   "/admin/users-management": "users",
   "/admin/bus-operators-management": "bus-operators-management",
@@ -169,15 +190,19 @@ export const routeToKeyMap: Record<string, string> = {
   "/admin/contracts": "list-bus-operator",
   "/admin/revenue-reports": "revenue-reports",
   "/admin/revenue-analytics": "revenue-analytics",
+  "/admin/promotion-management": "promotion-management",
+  "/admin/promotion-campaign-management": "promotion-campaign-management",
   "/admin/assign-roles": "assign-roles",
   "/admin/manage-roles": "manage-roles",
   "/admin/permission-settings": "permission-settings",
   "/admin/tickets": "tickets-customer-service",
   "/admin/bookings": "bookings-customer-service",
+  // customer service
   "/customer-service": "dashboard-customer-service",
   "/customer-service/tickets": "tickets-customer-service",
   "/customer-service/bookings": "bookings-customer-service",
   "/customer-service/trips": "trips-customer-service",
   "/customer-service/complaints": "complaints-customer-service",
   "/customer-service/reviews": "reviews-customer-service",
+  "/customer-service/chat": "chat-customer-service",
 };

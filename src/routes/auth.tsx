@@ -10,6 +10,10 @@ import RevenueAnalytics from "../features/revenue-management/revenue-analytics";
 // Role Management Pages
 import RoleManagementDemo from "../features/role-management/RoleManagementDemo";
 
+// Promotion Management
+import { PromotionManagement } from "../features/promotion-management";
+import PromotionCampaignManagement from "../features/promotion-campaign-management/pages/PromotionCampaignManagement";
+
 // Customer Service pages
 import TicketWithCustomerServicePage from "../features/ticket-management/pages/TicketWithCustomerServicePage";
 import TripWithCustomerServicePage from "../features/trip-management/TripWithCustomerService";
@@ -101,6 +105,16 @@ export const AuthRoute: RouteObject = {
     {
       path: "revenue-analytics",
       element: withRole(<RevenueAnalytics />, ["ADMIN"]),
+    },
+    // Promotion Management
+    {
+      path: "promotion-management",
+      element: withRole(<PromotionManagement />, ["ADMIN"]),
+    },
+    // Promotion Campaign Management
+    {
+      path: "promotion-campaign-management",
+      element: withRole(<PromotionCampaignManagement />, ["ADMIN"]),
     },
     // Role Management Routes
     {

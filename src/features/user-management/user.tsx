@@ -33,7 +33,8 @@ import {
   type UserFilterParams,
 } from "../../app/api/user";
 import UserModal from "./user-modal";
-import { getAllRoles, type Role } from "../../app/api/role";
+import { getAllRoles } from "../../app/api/role";
+import type { Role } from "../../types/role";
 import { useQuery } from "@tanstack/react-query";
 
 interface DataType {
