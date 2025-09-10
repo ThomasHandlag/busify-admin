@@ -20,12 +20,3 @@ export interface Notification {
   time: string;
   severity: "info" | "warning" | "error";
 }
-
-export interface ChatSession {
-  id: string;
-  customerName: string;
-  status: "active" | "waiting" | "closed";
-  lastMessage: string;
-  unreadCount: number;
-  startTime: string;
-}

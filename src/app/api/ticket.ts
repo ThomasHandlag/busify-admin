@@ -108,6 +108,7 @@ export const getTicketByCode = async (
   }
 };
 
+
 // delete ticket
 export const deleteTicket = async (ticketCode: string): Promise<boolean> => {
   try {

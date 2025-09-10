@@ -1,10 +1,11 @@
 import React from "react";
-import { Card, Typography, Avatar, Tag, Button, Space } from "antd";
+import { Card, Typography, Avatar, Tag, Button, Space, Dropdown } from "antd";
 import {
   PhoneOutlined,
   SearchOutlined,
   EyeOutlined,
   EditOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getStatusColor, getStatusText } from "../utils/ticketUtils"; // Giữ lại các hàm tiện ích cho status
@@ -12,7 +13,7 @@ import type { ComplaintDetail } from "../../../app/api/complaint";
 
 interface TicketsListProps {
   tickets: ComplaintDetail[];
-  onTicketAction: (action: string, ticketId: number) => void;
+  onTicketAction: (action: string, ticketId: number, extra?: any) => void; // Mở rộng để hỗ trợ extra (ví dụ: trạng thái mới)
 }
 
 export const TicketsList: React.FC<TicketsListProps> = ({
@@ -21,16 +22,28 @@ export const TicketsList: React.FC<TicketsListProps> = ({
 }) => {
   const ticketCardStyle: React.CSSProperties = {
     borderRadius: 10,
-    boxShadow: "0 6px 18px rgba(20,20,30,0.04)",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
     overflow: "hidden",
     background: "#fff",
   };
+
+  // Menu cho dropdown trạng thái
+  const statusMenu = (ticketId: number) => ({
+    items: [
+      { key: "pending", label: "Pending" },
+      { key: "in_progress", label: "In Progress" },
+      { key: "resolved", label: "Resolved" },
+      { key: "rejected", label: "Rejected" },
+    ],
+    onClick: ({ key }: { key: string }) => {
+      onTicketAction("ChangeStatus", ticketId, key); // Gọi với trạng thái mới
+    },
+  });
 
   return (
     <Card
       style={{
         ...ticketCardStyle,
-        border: "1px solid #f0f0f0",
         background: "#fafafa",
       }}
       bodyStyle={{ padding: 0 }}
@@ -43,7 +56,7 @@ export const TicketsList: React.FC<TicketsListProps> = ({
         }}
       >
         <Typography.Title level={5} style={{ margin: 0 }}>
-          Danh sách yêu cầu ({tickets.length})
+          Danh sách Khiếu nại ({tickets.length})
         </Typography.Title>
       </div>
       <div style={{ padding: "8px 0" }}>
@@ -59,246 +72,275 @@ export const TicketsList: React.FC<TicketsListProps> = ({
             <div>Không có yêu cầu phù hợp</div>
           </div>
         ) : (
-          tickets.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                padding: "16px 20px",
-                borderBottom: "1px solid #f5f5f5",
-                background: "#fff",
-                margin: "0 8px 8px",
-                borderRadius: 8,
-                border: "1px solid #f0f0f0",
-                transition: "all 0.2s ease",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
-                e.currentTarget.style.borderColor = "#d9d9d9";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.borderColor = "#f0f0f0";
-              }}
-            >
-              {/* Header Row */}
+          <div
+            style={{
+              maxHeight: "500px",
+              overflowY: "auto",
+            }}
+          >
+            {tickets.map((item) => (
               <div
+                key={item.id}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: 12,
+                  padding: "16px 20px",
+                  borderBottom: "1px solid #f5f5f5",
+                  background: "#fff",
+                  margin: "0 8px 8px",
+                  borderRadius: 8,
+                  border: "2px solid #E0E0E0",
+                  transition: "all 0.2s ease",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 8px rgba(0, 128, 255, 0.06)"; // xanh mờ
+                  e.currentTarget.style.borderColor = "rgba(0, 128, 255, 0.4)"; // xanh nhạt mờ
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.borderColor = "#f0f0f0";
                 }}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      marginBottom: 6,
-                    }}
-                  >
-                    <Typography.Text
-                      strong
+                {/* Header Row */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: 12,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
                       style={{
-                        fontSize: 15,
-                        color: "#262626",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        marginBottom: 6,
                       }}
                     >
-                      {item.title}{" "}
-                      {/* Thay thế: item.subject -> item.title */}
-                    </Typography.Text>
+                      <Typography.Text
+                        strong
+                        style={{
+                          fontSize: 15,
+                          color: "#262626",
+                        }}
+                      >
+                        {item.title}{" "}
+                        {/* Thay thế: item.subject -> item.title */}
+                      </Typography.Text>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <Tag
+                        color={getStatusColor(item.status)}
+                        style={{
+                          margin: 0,
+                          fontSize: 11,
+                          borderRadius: 4,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {getStatusText(item.status)}
+                      </Tag>
+
+                      <div
+                        style={{
+                          height: 12,
+                          width: 1,
+                          backgroundColor: "#f0f0f0",
+                        }}
+                      />
+
+                      <Typography.Text
+                        style={{
+                          fontSize: 12,
+                          color: "#8c8c8c",
+                        }}
+                      >
+                        #{item.id}
+                      </Typography.Text>
+                    </div>
                   </div>
 
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      flexWrap: "wrap",
+                      textAlign: "right",
+                      minWidth: 80,
                     }}
                   >
-                    <Tag
-                      color={getStatusColor(item.status)}
+                    <Typography.Text
                       style={{
-                        margin: 0,
                         fontSize: 11,
-                        borderRadius: 4,
-                        fontWeight: 500,
+                        color: "#999",
+                        display: "block",
                       }}
                     >
-                      {getStatusText(item.status)}
-                    </Tag>
-
-                    <div
+                      Tạo lúc
+                    </Typography.Text>
+                    <Typography.Text
                       style={{
-                        height: 12,
-                        width: 1,
-                        backgroundColor: "#f0f0f0",
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: "#595959",
                       }}
-                    />
+                    >
+                      {dayjs(item.createdAt).format("DD/MM HH:mm")}
+                    </Typography.Text>
+                  </div>
+                </div>
 
+                {/* Customer Info Row */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 12,
+                    padding: "8px 12px",
+                    backgroundColor: "#fafafa",
+                    borderRadius: 6,
+                  }}
+                >
+                  <Avatar
+                    size={32}
+                    style={{
+                      backgroundColor: "#f0f2f5",
+                      color: "#595959",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {/* Thay thế: Truy cập tên khách hàng qua object customer */}
+                    {item.customer.customerName
+                      .split(" ")
+                      .slice(-1)[0]
+                      .charAt(0)}
+                  </Avatar>
+
+                  <div style={{ flex: 1 }}>
+                    <Typography.Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: "#262626",
+                        display: "block",
+                      }}
+                    >
+                      {item.customer.customerName}
+                    </Typography.Text>
                     <Typography.Text
                       style={{
                         fontSize: 12,
                         color: "#8c8c8c",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
                       }}
                     >
-                      #{item.id}
+                      <PhoneOutlined style={{ fontSize: 11 }} />
+                      {/* Thay thế: Truy cập sđt qua object customer */}
+                      {item.customer.customerPhone}
                     </Typography.Text>
                   </div>
                 </div>
 
+                {/* Description */}
+                <div style={{ marginBottom: 12 }}>
+                  <Typography.Text
+                    style={{
+                      fontSize: 13,
+                      color: "#595959",
+                      lineHeight: 1.4,
+                      display: "block",
+                    }}
+                  >
+                    {item.description.length > 100
+                      ? `${item.description.substring(0, 100)}...`
+                      : item.description}
+                  </Typography.Text>
+                </div>
+
+                {/* Action Row */}
                 <div
                   style={{
-                    textAlign: "right",
-                    minWidth: 80,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    paddingTop: 8,
+                    borderTop: "1px solid #f5f5f5",
                   }}
                 >
-                  <Typography.Text
-                    style={{
-                      fontSize: 11,
-                      color: "#999",
-                      display: "block",
-                    }}
-                  >
-                    Tạo lúc
+                  {/* Thay thế: Hiển thị booking code thay cho priority */}
+                  <Typography.Text style={{ fontSize: 12, color: "#8c8c8c" }}>
+                    Mã đặt chỗ: <strong>{item.booking.bookingCode}</strong>
                   </Typography.Text>
-                  <Typography.Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: "#595959",
-                    }}
-                  >
-                    {dayjs(item.createdAt).format("DD/MM HH:mm")}
-                  </Typography.Text>
+
+                  <Space size="small">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EyeOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTicketAction("View", item.id);
+                      }}
+                      style={{
+                        color: "#595959",
+                        fontSize: 12,
+                        height: 28,
+                        padding: "0 8px",
+                      }}
+                    >
+                      Xem
+                    </Button>
+                    {/* Nút mới: Gửi Email */}
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<MailOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTicketAction("SendEmail", item.id);
+                      }}
+                      style={{
+                        color: "#52c41a", // Màu xanh lá cho email
+                        fontSize: 12,
+                        height: 28,
+                        padding: "0 8px",
+                      }}
+                    >
+                      Gửi Email
+                    </Button>
+                    {/* Thay đổi nút "Xử lý" thành dropdown để chuyển trạng thái */}
+                    <Dropdown menu={statusMenu(item.id)} trigger={["click"]}>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          color: "#1890ff",
+                          fontSize: 12,
+                          height: 28,
+                          padding: "0 8px",
+                          fontWeight: 500,
+                        }}
+                      >
+                        Chuyển Trạng Thái
+                      </Button>
+                    </Dropdown>
+                  </Space>
                 </div>
               </div>
-
-              {/* Customer Info Row */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 12,
-                  padding: "8px 12px",
-                  backgroundColor: "#fafafa",
-                  borderRadius: 6,
-                }}
-              >
-                <Avatar
-                  size={32}
-                  style={{
-                    backgroundColor: "#f0f2f5",
-                    color: "#595959",
-                    fontWeight: 600,
-                  }}
-                >
-                  {/* Thay thế: Truy cập tên khách hàng qua object customer */}
-                  {item.customer.customerName.split(" ").slice(-1)[0].charAt(0)}
-                </Avatar>
-
-                <div style={{ flex: 1 }}>
-                  <Typography.Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: "#262626",
-                      display: "block",
-                    }}
-                  >
-                    {item.customer.customerName}
-                  </Typography.Text>
-                  <Typography.Text
-                    style={{
-                      fontSize: 12,
-                      color: "#8c8c8c",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <PhoneOutlined style={{ fontSize: 11 }} />
-                    {/* Thay thế: Truy cập sđt qua object customer */}
-                    {item.customer.customerPhone}
-                  </Typography.Text>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div style={{ marginBottom: 12 }}>
-                <Typography.Text
-                  style={{
-                    fontSize: 13,
-                    color: "#595959",
-                    lineHeight: 1.4,
-                    display: "block",
-                  }}
-                >
-                  {item.description.length > 100
-                    ? `${item.description.substring(0, 100)}...`
-                    : item.description}
-                </Typography.Text>
-              </div>
-
-              {/* Action Row */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingTop: 8,
-                  borderTop: "1px solid #f5f5f5",
-                }}
-              >
-                {/* Thay thế: Hiển thị booking code thay cho priority */}
-                <Typography.Text style={{ fontSize: 12, color: "#8c8c8c" }}>
-                  Mã đặt chỗ: <strong>{item.booking.bookingCode}</strong>
-                </Typography.Text>
-
-                <Space size="small">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<EyeOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTicketAction("View", item.id);
-                    }}
-                    style={{
-                      color: "#595959",
-                      fontSize: 12,
-                      height: 28,
-                      padding: "0 8px",
-                    }}
-                  >
-                    Xem
-                  </Button>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTicketAction("Process", item.id);
-                    }}
-                    style={{
-                      color: "#1890ff",
-                      fontSize: 12,
-                      height: 28,
-                      padding: "0 8px",
-                      fontWeight: 500,
-                    }}
-                  >
-                    Xử lý
-                  </Button>
-                </Space>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </Card>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import {
   Drawer,
@@ -17,6 +18,9 @@ import {
   Form,
   Input,
   Spin,
+  Alert,
+  Dropdown, // Thêm import cho Dropdown
+  Menu, // Thêm import cho Menu
 } from "antd";
 import {
   CarOutlined,
@@ -34,6 +38,7 @@ import {
   StarOutlined,
   ShoppingCartOutlined,
   PhoneOutlined,
+  DownOutlined, // Thêm icon cho dropdown
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { Trip } from "../../../app/api/trip";
@@ -41,9 +46,11 @@ import TripSeatSelector from "./TripSeatSelector";
 // Import the API functions
 import { getTripSeats, type SeatStatus } from "../../../app/api/tripSeat";
 import { getSeatLayout, type LayoutData } from "../../../app/api/seatLayout";
+import MailSenderModal from "../../../components/MailSenderModal";
+import BulkMailSenderModal from "../../../components/BulkMailSenderModal"; // Add import for BulkMailSenderModal
+// Add import for MailSenderModal (adjust path if needed based on your workspace structure)
 
 const { Title, Text } = Typography;
-const { Panel } = Collapse;
 
 // Harmonized palette
 const PALETTE = {
@@ -85,6 +92,17 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
   const [seatStatuses, setSeatStatuses] = useState<SeatStatus[]>([]);
   const [seatLoading, setSeatLoading] = useState(false);
 
+  // Add state for mail modal
+  const [isMailModalVisible, setIsMailModalVisible] = useState(false);
+  const [mailForm] = Form.useForm();
+
+  // Add state for bulk mail modal
+  const [isBulkMailModalVisible, setIsBulkMailModalVisible] = useState(false);
+  const [bulkMailForm] = Form.useForm();
+
+  // Thêm state để phân biệt loại email (hành khách hay nhà xe)
+  const [isForOperator, setIsForOperator] = useState(false);
+
   // Function to fetch seat data from APIs
   const fetchSeatData = async () => {
     if (!trip || !visible) return;
@@ -94,6 +112,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       // Fetch seat layout
       const layoutResponse = await getSeatLayout(trip.trip_id.toString());
       if (layoutResponse.code === 200) {
+        console.log("Seat layout data:", layoutResponse.result.layoutData);
         setSeatLayout(layoutResponse.result.layoutData);
       } else {
         message.error("Không thể tải thông tin bố trí ghế");
@@ -102,6 +121,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       // Fetch seat statuses
       const statusResponse = await getTripSeats(trip.trip_id);
       if (statusResponse.code === 200) {
+        console.log("Seat status data:", statusResponse.result.seatsStatus);
         setSeatStatuses(statusResponse.result.seatsStatus);
       } else {
         message.error("Không thể tải trạng thái ghế");
@@ -174,10 +194,6 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
 
   const handlePrintInfo = () => {
     message.success("Đang chuẩn bị in thông tin chuyến đi...");
-  };
-
-  const handleSendEmail = () => {
-    message.success("Đã gửi thông tin chuyến đi qua email");
   };
 
   const renderAmenities = () => {
@@ -307,16 +323,59 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
     </Card>
   );
 
+  // Add this function to check if trip is bookable
+  const isTripBookable = (status: string): boolean => {
+    return !["cancelled", "delayed", "departed"].includes(status);
+  };
+
   // Custom close handler to ensure cleanup
   const handleDrawerClose = () => {
     // Reset all state
     setSelectedSeats([]);
     setBookingModalVisible(false);
     bookingForm.resetFields();
+    setIsMailModalVisible(false); // Reset mail modal state
+    mailForm.resetFields();
+    setIsBulkMailModalVisible(false); // Reset bulk mail modal state
+    bulkMailForm.resetFields();
+    setIsForOperator(false); // Reset isForOperator
 
     // Call parent onClose
     onClose();
   };
+
+  // Add handlers for new buttons
+  const handleSendToPassenger = () => {
+    // Prefill bulk mail form with trip details
+    bulkMailForm.setFieldsValue({
+      tripId: trip?.trip_id,
+      subject: `Thông tin chuyến đi ${trip?.trip_id} - Busify`,
+    });
+    setIsForOperator(false); // Đặt là false cho hành khách
+    setIsBulkMailModalVisible(true);
+  };
+
+  const handleSendToOperator = () => {
+    // Prefill bulk mail form with trip details và sử dụng sendCustomerSupportEmailToBusOperator
+    bulkMailForm.setFieldsValue({
+      tripId: trip?.trip_id,
+      subject: `Thông tin chuyến đi ${trip?.trip_id} - Busify`,
+    });
+    setIsForOperator(true); // Đặt là true cho nhà xe
+    setIsBulkMailModalVisible(true);
+  };
+
+  // Tạo menu cho dropdown
+  const emailMenu = (
+    <Menu>
+      <Menu.Item key="passenger" onClick={handleSendToPassenger}>
+        Gửi cho hành khách
+      </Menu.Item>
+      <Menu.Item key="operator" onClick={handleSendToOperator}>
+        Gửi email cho nhà xe
+      </Menu.Item>
+    </Menu>
+  );
 
   return (
     <Drawer
@@ -332,9 +391,11 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       destroyOnClose={true}
       extra={
         <Space>
-          <Button icon={<MailOutlined />} onClick={handleSendEmail}>
-            Gửi email
-          </Button>
+          <Dropdown overlay={emailMenu} trigger={["click"]}>
+            <Button icon={<MailOutlined />}>
+              Gửi email <DownOutlined />
+            </Button>
+          </Dropdown>
           <Button icon={<PrinterOutlined />} onClick={handlePrintInfo}>
             In thông tin
           </Button>
@@ -378,6 +439,19 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
           </Col>
         </Row>
 
+        {/* Add alert for non-bookable trips */}
+        {!isTripBookable(trip.status) && (
+          <Alert
+            message="Không thể đặt vé"
+            description={`Chuyến đi này đã ${getStatusText(
+              trip.status
+            ).toLowerCase()}, không thể đặt vé.`}
+            type="warning"
+            showIcon
+            style={{ marginBottom: "16px" }}
+          />
+        )}
+
         {/* Trip Seat Section (use items prop to avoid rc-collapse children deprecation) */}
         <Collapse
           defaultActiveKey={["1"]}
@@ -403,10 +477,12 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
                       onSeatSelect={handleSeatSelect}
                       availableSeats={trip?.available_seats || 0}
                       seatStatuses={seatStatuses}
+                      tripStatus={trip.status} // Add trip status prop
                     />
                   )}
 
-                  {selectedSeats.length > 0 && (
+                  {/* Only show booking options for bookable trips */}
+                  {selectedSeats.length > 0 && isTripBookable(trip.status) && (
                     <div style={{ marginTop: "12px" }}>
                       <Space direction="vertical" style={{ width: "100%" }}>
                         <div>
@@ -597,6 +673,39 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
           </Text>
         </Card>
       </div>
+
+      {/* Add MailSenderModal at the end */}
+      <MailSenderModal
+        isVisible={isMailModalVisible}
+        setIsVisible={setIsMailModalVisible}
+        form={mailForm}
+        defaultRecipient={mailForm.getFieldValue("toEmail") || ""}
+        defaultSubject={mailForm.getFieldValue("subject") || ""}
+        defaultUserName={mailForm.getFieldValue("userName") || ""}
+        caseNumber={mailForm.getFieldValue("caseNumber") || ""}
+        onSuccess={() => {
+          message.success("Đã gửi email thành công!");
+          setIsMailModalVisible(false);
+          mailForm.resetFields();
+        }}
+      />
+
+      {/* Add BulkMailSenderModal at the end */}
+      <BulkMailSenderModal
+        isVisible={isBulkMailModalVisible}
+        setIsVisible={setIsBulkMailModalVisible}
+        form={bulkMailForm}
+        defaultTripId={bulkMailForm.getFieldValue("tripId") || trip?.trip_id}
+        defaultSubject={bulkMailForm.getFieldValue("subject") || ""}
+        csRepName="Admin" // Or get from current user context
+        isForOperator={isForOperator} // Truyền prop để sử dụng sendCustomerSupportEmailToBusOperator khi true
+        onSuccess={() => {
+          message.success("Đã gửi email thành công!");
+          setIsBulkMailModalVisible(false);
+          bulkMailForm.resetFields();
+          setIsForOperator(false); // Reset sau khi gửi
+        }}
+      />
     </Drawer>
   );
 };

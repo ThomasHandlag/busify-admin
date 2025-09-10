@@ -51,20 +51,7 @@ const MonthlyReportCharts: React.FC<MonthlyReportChartsProps> = ({
     { type: "Xe hoạt động", value: monthlyData.totalBuses, color: "#fa8c16" },
   ];
 
-  const pieConfig = {
-    data: analysisData,
-    angleField: "value",
-    colorField: "type",
-    radius: 0.8,
-    label: {
-      type: "outer" as const,
-      content: "{name}\n{value}",
-    },
-    color: analysisData.map((item) => item.color),
-    legend: {
-      position: "bottom" as const,
-    },
-  };
+  
 
   // Dữ liệu cho biểu đồ cột so sánh
   const comparisonData = [
@@ -77,26 +64,7 @@ const MonthlyReportCharts: React.FC<MonthlyReportChartsProps> = ({
     { metric: "Xe hoạt động", value: monthlyData.totalBuses || 0, unit: "xe" },
   ];
 
-  const columnConfig = {
-    data: comparisonData,
-    xField: "metric",
-    yField: "value",
-    columnStyle: {
-      fill: "#52c41a",
-      radius: [4, 4, 0, 0],
-    },
-    label: {
-      position: "top" as const,
-      formatter: (data: { value: number; unit: string }) =>
-        `${data.value} ${data.unit}`,
-    },
-    tooltip: {
-      formatter: (datum: { metric: string; value: number; unit: string }) => ({
-        name: datum.metric,
-        value: `${datum.value} ${datum.unit}`,
-      }),
-    },
-  };
+  
 
   return (
     <>
@@ -145,19 +113,7 @@ const MonthlyReportCharts: React.FC<MonthlyReportChartsProps> = ({
         </Col>
       </Row>
 
-      {/* Charts Row */}
-      <Row gutter={16} style={{ marginBottom: "24px" }}>
-        <Col xs={24} lg={12}>
-          <Card title="📊 Phân tích hoạt động" size="small">
-            <Pie {...pieConfig} height={250} />
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card title="📈 So sánh chỉ số" size="small">
-            <Column {...columnConfig} height={250} />
-          </Card>
-        </Col>
-      </Row>
+     
 
       {/* Report Details */}
       <Card title="📋 Chi tiết báo cáo tháng" size="small">

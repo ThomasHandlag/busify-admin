@@ -38,6 +38,7 @@ export const CustomerServiceRoute: RouteObject = {
   children: [
     {
       index: true,
+
       element: <DashboardWithCustomerService />,
     },
     {
@@ -70,6 +71,7 @@ export const CustomerServiceRoute: RouteObject = {
         "ADMIN",
       ]),
     },
+
     {
       path: "chat",
       element: <ChatWithCustomerServicePage />,

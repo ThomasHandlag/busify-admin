@@ -103,12 +103,29 @@ export const updateComplaint = async (
   }
 };
 
-export const getComplaintByAgent = async (
-): Promise<ComplaintDetailListResponse> => {
+export const getComplaintByAgent =
+  async (): Promise<ComplaintDetailListResponse> => {
+    try {
+      const response = await apiClient.get(`api/complaints/agent/in-progress`);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        "Không thể lấy danh sách khiếu nại theo nhân viên" + error
+      );
+    }
+  };
+
+export const updateComplaintStatus = async (
+  complaintId: number,
+  status: string
+): Promise<ComplaintDetailResponse> => {
   try {
-    const response = await apiClient.get(`api/complaints/agent/in-progress`);
+    const response = await apiClient.patch(
+      `/api/complaints/${complaintId}/status`,
+      { status }
+    );
     return response.data;
   } catch (error) {
-    throw new Error("Không thể lấy danh sách khiếu nại theo nhân viên" + error);
+    throw new Error("Không thể cập nhật trạng thái khiếu nại" + error);
   }
 };
