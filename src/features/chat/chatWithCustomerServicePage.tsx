@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ChatList } from "./components/ChatList";
 import { ChatMessageList } from "./components/ChatMessageList";
 import { MessageInput } from "./components/MessageInput";
@@ -11,6 +12,7 @@ import { useWebSocket } from "../../app/provider/WebSocketContext";
 import { getVNISOString } from "../../utils/time_stamp";
 
 export const ChatWithCustomerServicePage = () => {
+  const [searchParams] = useSearchParams();
   const { loggedInUser } = useAuthStore();
   const {
     isConnected,
@@ -26,6 +28,25 @@ export const ChatWithCustomerServicePage = () => {
   const [messageText, setMessageText] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Handle chat selection
+  const handleChatSelect = useCallback(async (chat: ChatSession) => {
+    setSelectedChat(chat);
+
+    try {
+      const fetchedMessages = await fetchMessages(chat.id);
+      setMessages(fetchedMessages);
+    } catch (error) {
+      console.error("Failed to fetch messages:", error);
+      message.error("Không thể tải lịch sử tin nhắn");
+      setMessages([]);
+    }
+
+    // Mark as read locally
+    setChatSessions((prev) =>
+      prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
+    );
+  }, []);
 
   // Update chat list when a new message is received
   const updateChatWithNewMessage = (newMessage: ChatMessage) => {
@@ -76,7 +97,6 @@ export const ChatWithCustomerServicePage = () => {
     const loadChatSessions = async () => {
       try {
         const sessions = await fetchChatSessions();
-        console.log("Fetched chat sessions:", sessions);
         setChatSessions(sessions);
       } catch (error) {
         console.error("Failed to fetch chat sessions:", error);
@@ -89,29 +109,21 @@ export const ChatWithCustomerServicePage = () => {
     }
   }, [loggedInUser]);
 
+  // Auto-select chat from URL parameter
+  useEffect(() => {
+    const chatIdFromUrl = searchParams.get("chatId");
+    if (chatIdFromUrl && chatSessions.length > 0) {
+      const chatToSelect = chatSessions.find((c) => c.id === chatIdFromUrl);
+      if (chatToSelect && chatToSelect.id !== selectedChat?.id) {
+        handleChatSelect(chatToSelect);
+      }
+    }
+  }, [chatSessions, searchParams, handleChatSelect, selectedChat?.id]);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Handle chat selection
-  const handleChatSelect = async (chat: ChatSession) => {
-    setSelectedChat(chat);
-
-    try {
-      const fetchedMessages = await fetchMessages(chat.id);
-      setMessages(fetchedMessages);
-    } catch (error) {
-      console.error("Failed to fetch messages:", error);
-      message.error("Không thể tải lịch sử tin nhắn");
-      setMessages([]);
-    }
-
-    // Mark as read locally
-    setChatSessions((prev) =>
-      prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
-    );
-  };
 
   // Send message
   const handleSendMessage = () => {

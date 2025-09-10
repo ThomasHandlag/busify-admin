@@ -218,7 +218,9 @@ export const DashboardWithCustomerService = () => {
         <Col xs={24} lg={8}>
           <DashboardSidebar
             customerSatisfaction={stats.customerSatisfaction}
-            chatSessions={chatSessions} // Sử dụng state thay vì mock
+            chatSessions={chatSessions}
+            chatLoading={chatLoading}
+            chatError={chatError}
           />
         </Col>
       </Row>
