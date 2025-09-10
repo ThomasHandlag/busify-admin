@@ -48,8 +48,8 @@ class WebSocketService {
         this.reconnectTimeout = null;
       }
 
-      // Create a new SockJS connection
-      const socket = new SockJS(`http://localhost:8080/ws`);
+      // Create a new SockJS connection using environment variable
+      const socket = new SockJS(`${import.meta.env.VITE_SECRET_API}ws`);
       this.client = Stomp.over(socket);
 
       // Disable debug logging
