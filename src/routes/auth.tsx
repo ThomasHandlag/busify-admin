@@ -15,9 +15,11 @@ import TripWithCustomerServicePage from "../features/trip-management/TripWithCus
 import ComplaintsWithCustomerServicePage from "../features/complaints-management/pages/ComplaintsWithCustomerServicePage";
 import ReviewsWithCustomerServicePage from "../features/reviews-management/pages/ReviewsWithCustomerServicePage";
 import BookingsWithCustomerService from "../features/bookings-mangement/pages/BookingsWithCustomerService";
+
 import { DashboardWithCustomerService } from "../features/dashboard/pages/dashboardWithCustomerService";
 import Dashboard from "../features/dashboard/pages/dashboard";
 import { ChatWithCustomerServicePage } from "../features/chat/chatWithCustomerServicePage";
+
 
 export function withRole(element: React.ReactNode, roles: string[]) {
   return <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
@@ -30,6 +32,7 @@ export const CustomerServiceRoute: RouteObject = {
   children: [
     {
       index: true,
+
       element: <DashboardWithCustomerService />,
     },
     {
@@ -62,6 +65,7 @@ export const CustomerServiceRoute: RouteObject = {
         "ADMIN",
       ]),
     },
+
     {
       path: "chat",
       element: <ChatWithCustomerServicePage />,

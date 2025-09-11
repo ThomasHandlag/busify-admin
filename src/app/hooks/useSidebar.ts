@@ -102,6 +102,7 @@ export const useSidebar = () => {
       case "revenue-analytics":
         navigate("/admin/revenue-analytics");
         break;
+
       case "chat-customer-service":
         navigate("/customer-service/chat");
         break;
