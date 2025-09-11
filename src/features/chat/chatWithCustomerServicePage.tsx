@@ -9,6 +9,7 @@ import { Col, message, Row } from "antd";
 import type { ChatMessage, ChatSession } from "../../app/api/chat";
 import { fetchChatSessions, fetchMessages } from "../../app/api/chat";
 import { useWebSocket } from "../../app/provider/WebSocketContext";
+import type { ChatNotification } from "../../app/service/WebSocketService";
 import { getVNISOString } from "../../utils/time_stamp";
 
 export const ChatWithCustomerServicePage = () => {
@@ -20,6 +21,8 @@ export const ChatWithCustomerServicePage = () => {
     sendMessage,
     addMessageHandler,
     removeMessageHandler,
+    addNotificationHandler,
+    removeNotificationHandler,
   } = useWebSocket();
 
   const [searchText, setSearchText] = useState("");
@@ -42,39 +45,74 @@ export const ChatWithCustomerServicePage = () => {
       setMessages([]);
     }
 
-    // Mark as read locally
+    // Mark as read locally by resetting unread count
     setChatSessions((prev) =>
       prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
     );
   }, []);
 
   // Update chat list when a new message is received
-  const updateChatWithNewMessage = (newMessage: ChatMessage) => {
-    if (!newMessage.roomId) return;
+  const updateChatWithNewMessage = useCallback(
+    (newMessage: ChatMessage) => {
+      if (!newMessage.roomId) return;
 
-    setChatSessions((prev) =>
-      prev.map((chat) =>
-        chat.id === newMessage.roomId
-          ? {
-              ...chat,
-              lastMessage: newMessage.content,
-              lastMessageTime: newMessage.timestamp,
-            }
-          : chat
-      )
-    );
-  };
+      setChatSessions((prev) =>
+        prev.map((chat) =>
+          chat.id === newMessage.roomId
+            ? {
+                ...chat,
+                lastMessage: newMessage.content,
+                lastMessageTime: newMessage.timestamp,
+                unreadCount:
+                  selectedChat?.id === newMessage.roomId
+                    ? 0
+                    : (chat.unreadCount || 0) + 1, // Increment only if not current room
+              }
+            : chat
+        )
+      );
+    },
+    [selectedChat?.id]
+  );
 
   // Message handler function
-  const handleNewMessage = (newMessage: ChatMessage) => {
-    console.log("New message received:", newMessage);
+  const handleNewMessage = useCallback(
+    (newMessage: ChatMessage) => {
+      console.log("New message received:", newMessage);
 
-    // Add to messages list if from current room
-    setMessages((prev) => [...prev, newMessage]);
+      // Add to messages list if from current room
+      setMessages((prev) => [...prev, newMessage]);
 
-    // Update chat list with new message info
-    updateChatWithNewMessage(newMessage);
-  };
+      // Update chat list with new message info
+      updateChatWithNewMessage(newMessage);
+    },
+    [updateChatWithNewMessage]
+  );
+
+  // Notification handler function for messages in other rooms
+  const handleNotification = useCallback(
+    (notification: ChatNotification) => {
+      console.log("Received notification:", notification);
+
+      // Update chat list with notification info and increment unread count
+      setChatSessions((prev) =>
+        prev.map((chat) =>
+          chat.id === notification.roomId
+            ? {
+                ...chat,
+                lastMessage: notification.contentPreview,
+                lastMessageTime: notification.timestamp,
+                unreadCount:
+                  selectedChat?.id === notification.roomId
+                    ? 0
+                    : (chat.unreadCount || 0) + 1, // Increment only if not current room
+              }
+            : chat
+        )
+      );
+    },
+    [selectedChat?.id]
+  );
 
   // Subscribe to selected room when it changes
   useEffect(() => {
@@ -90,7 +128,24 @@ export const ChatWithCustomerServicePage = () => {
         removeMessageHandler(selectedChat.id, handleNewMessage);
       };
     }
-  }, [selectedChat, subscribeToRoom, addMessageHandler, removeMessageHandler]);
+  }, [
+    selectedChat,
+    subscribeToRoom,
+    addMessageHandler,
+    removeMessageHandler,
+    handleNewMessage,
+  ]);
+
+  // Set up notification handler for all other rooms
+  useEffect(() => {
+    // Add notification handler
+    addNotificationHandler(handleNotification);
+
+    // Clean up when component unmounts
+    return () => {
+      removeNotificationHandler(handleNotification);
+    };
+  }, [addNotificationHandler, removeNotificationHandler, handleNotification]);
 
   // Load chat sessions
   useEffect(() => {

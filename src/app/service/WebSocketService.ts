@@ -5,6 +5,15 @@ import type { ChatMessage } from "../api/chat";
 
 type MessageHandler = (message: ChatMessage) => void;
 type ConnectionStatusHandler = (connected: boolean) => void;
+type NotificationHandler = (notification: ChatNotification) => void;
+
+export interface ChatNotification {
+  roomId: string;
+  sender: string;
+  contentPreview: string;
+  type: string;
+  timestamp: string;
+}
 
 class WebSocketService {
   private client: Stomp.Client | null = null;
@@ -13,6 +22,8 @@ class WebSocketService {
   private roomSubscriptions: Record<string, Stomp.Subscription> = {};
   private messageHandlers: Record<string, Set<MessageHandler>> = {};
   private connectionStatusHandlers = new Set<ConnectionStatusHandler>();
+  private notificationHandlers = new Set<NotificationHandler>();
+  private notificationSubscription: Stomp.Subscription | null = null;
   private accessToken: string | null = null;
   private userEmail: string | null = null;
 
@@ -73,6 +84,9 @@ class WebSocketService {
 
     this.setConnected(true);
 
+    // Subscribe to personal notifications channel
+    this.subscribeToNotifications();
+
     // Resubscribe to all previous room subscriptions
     Object.keys(this.roomSubscriptions).forEach((roomId) => {
       this.subscribeToRoom(roomId);
@@ -104,6 +118,16 @@ class WebSocketService {
 
   public disconnect(): void {
     if (!this.client) return;
+
+    // Unsubscribe from notifications
+    if (this.notificationSubscription) {
+      try {
+        this.notificationSubscription.unsubscribe();
+        this.notificationSubscription = null;
+      } catch (err) {
+        console.error("Error unsubscribing from notifications:", err);
+      }
+    }
 
     // Unsubscribe from all rooms
     Object.values(this.roomSubscriptions).forEach((subscription) => {
@@ -213,6 +237,49 @@ class WebSocketService {
   // Remove a connection status handler
   public removeConnectionStatusHandler(handler: ConnectionStatusHandler): void {
     this.connectionStatusHandlers.delete(handler);
+  }
+
+  // Subscribe to personal notifications
+  private subscribeToNotifications(): void {
+    if (!this.client || !this.connected || !this.userEmail) return;
+
+    // Unsubscribe if already subscribed
+    if (this.notificationSubscription) {
+      try {
+        this.notificationSubscription.unsubscribe();
+        this.notificationSubscription = null;
+      } catch (err) {
+        console.error("Error unsubscribing from notifications:", err);
+      }
+    }
+
+    // Subscribe to user's personal notification channel
+    this.notificationSubscription = this.client.subscribe(
+      `/topic/user/${this.userEmail}/notifications`,
+      (payload) => {
+        try {
+          const notification = JSON.parse(payload.body) as ChatNotification;
+          console.log("Received notification:", notification);
+
+          // Notify all notification handlers
+          this.notificationHandlers.forEach((handler) => handler(notification));
+        } catch (error) {
+          console.error("Error processing notification:", error);
+        }
+      }
+    );
+
+    console.log(`Subscribed to notifications for user: ${this.userEmail}`);
+  }
+
+  // Register a notification handler
+  public addNotificationHandler(handler: NotificationHandler): void {
+    this.notificationHandlers.add(handler);
+  }
+
+  // Remove a notification handler
+  public removeNotificationHandler(handler: NotificationHandler): void {
+    this.notificationHandlers.delete(handler);
   }
 
   // Notify all handlers for a specific room

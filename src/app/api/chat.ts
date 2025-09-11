@@ -7,6 +7,7 @@ export interface ChatSession {
   avatar?: string;
   lastMessage: string;
   lastMessageTime: string;
+  unreadCount?: number; // New field to track unread messages
 }
 
 export type ChatMessageType = "CHAT" | "JOIN" | "LEAVE" | "SYSTEM_ASSIGN";
@@ -34,6 +35,8 @@ export const fetchMessages = async (chatId: string): Promise<ChatMessage[]> => {
 };
 
 export const fetchRecentChatSessions = async (): Promise<ChatSession[]> => {
-  const response = await apiClient.get<ChatSession[]>("api/chat/recent-sessions");
+  const response = await apiClient.get<ChatSession[]>(
+    "api/chat/recent-sessions"
+  );
   return response.data;
 };
