@@ -7,7 +7,9 @@ import React, {
 } from "react";
 import { useAuthStore } from "../../stores/auth_store";
 import type { ChatMessage } from "../api/chat";
-import WebSocketService from "../service/WebSocketService";
+import WebSocketService, {
+  type ChatNotification,
+} from "../service/WebSocketService";
 
 interface WebSocketContextType {
   isConnected: boolean;
@@ -21,6 +23,12 @@ interface WebSocketContextType {
   removeMessageHandler: (
     roomId: string,
     handler: (message: ChatMessage) => void
+  ) => void;
+  addNotificationHandler: (
+    handler: (notification: ChatNotification) => void
+  ) => void;
+  removeNotificationHandler: (
+    handler: (notification: ChatNotification) => void
   ) => void;
 }
 
@@ -55,33 +63,53 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [loggedInUser, accessToken]);
 
   // Helper functions that will be exposed through the context
-  const subscribeToRoom = useCallback((roomId: string) => {
-    wsService.subscribeToRoom(roomId);
-  }, []);
+  const subscribeToRoom = useCallback(
+    (roomId: string) => {
+      wsService.subscribeToRoom(roomId);
+    },
+    [wsService]
+  );
 
-  const unsubscribeFromRoom = useCallback((roomId: string) => {
-    wsService.unsubscribeFromRoom(roomId);
-  }, []);
+  const unsubscribeFromRoom = useCallback(
+    (roomId: string) => {
+      wsService.unsubscribeFromRoom(roomId);
+    },
+    [wsService]
+  );
 
   const sendMessage = useCallback(
     (roomId: string, message: Omit<ChatMessage, "id">) => {
       wsService.sendMessage(roomId, message);
     },
-    []
+    [wsService]
   );
 
   const addMessageHandler = useCallback(
     (roomId: string, handler: (message: ChatMessage) => void) => {
       wsService.addMessageHandler(roomId, handler);
     },
-    []
+    [wsService]
   );
 
   const removeMessageHandler = useCallback(
     (roomId: string, handler: (message: ChatMessage) => void) => {
       wsService.removeMessageHandler(roomId, handler);
     },
-    []
+    [wsService]
+  );
+
+  const addNotificationHandler = useCallback(
+    (handler: (notification: ChatNotification) => void) => {
+      wsService.addNotificationHandler(handler);
+    },
+    [wsService]
+  );
+
+  const removeNotificationHandler = useCallback(
+    (handler: (notification: ChatNotification) => void) => {
+      wsService.removeNotificationHandler(handler);
+    },
+    [wsService]
   );
 
   // Expose all the necessary functions and state through the context
@@ -92,6 +120,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     sendMessage,
     addMessageHandler,
     removeMessageHandler,
+    addNotificationHandler,
+    removeNotificationHandler,
   };
 
   return (

@@ -1,5 +1,14 @@
 import React from "react";
-import { Card, Space, Typography, List, Avatar, Button, Spin } from "antd";
+import {
+  Card,
+  Space,
+  Typography,
+  List,
+  Avatar,
+  Button,
+  Spin,
+  Badge,
+} from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import type { ChatSession } from "../../../app/api/chat";
@@ -113,6 +122,9 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                           {item.customerName}
                         </Typography.Text>
                       </div>
+                      {item.unreadCount && item.unreadCount > 0 && (
+                        <Badge count={item.unreadCount} size="small" />
+                      )}
                     </div>
                   }
                   description={

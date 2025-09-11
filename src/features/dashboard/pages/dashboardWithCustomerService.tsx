@@ -16,6 +16,8 @@ import ComplaintDetailModal from "../../complaints-management/components/Complai
 import MailSenderModal from "../../../components/MailSenderModal"; // Thêm import
 import type { ChatSession } from "../../../app/api/chat";
 import { fetchRecentChatSessions } from "../../../app/api/chat"; // Thêm import
+import { useWebSocket } from "../../../app/provider/WebSocketContext";
+import type { ChatNotification } from "../../../app/service/WebSocketService";
 
 export const DashboardWithCustomerService = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -39,6 +41,9 @@ export const DashboardWithCustomerService = () => {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [chatLoading, setChatLoading] = useState<boolean>(true);
   const [chatError, setChatError] = useState<string | null>(null);
+
+  // Thêm WebSocket hook
+  const { addNotificationHandler, removeNotificationHandler } = useWebSocket();
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
@@ -81,10 +86,47 @@ export const DashboardWithCustomerService = () => {
     }
   }, []);
 
+  // Notification handler function for chat updates
+  const handleChatNotification = useCallback(
+    (notification: ChatNotification) => {
+      console.log("Dashboard received chat notification:", notification);
+
+      // Update chat sessions with notification info
+      setChatSessions((prev) =>
+        prev.map((chat) =>
+          chat.id === notification.roomId
+            ? {
+                ...chat,
+                lastMessage: notification.contentPreview,
+                lastMessageTime: notification.timestamp,
+                unreadCount: (chat.unreadCount || 0) + 1, // Increment unread count
+              }
+            : chat
+        )
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     fetchComplaints();
     fetchChatSessions(); // Gọi fetch chat sessions
   }, [fetchComplaints, fetchChatSessions]);
+
+  // Set up notification handler for chat updates
+  useEffect(() => {
+    // Add notification handler
+    addNotificationHandler(handleChatNotification);
+
+    // Clean up when component unmounts
+    return () => {
+      removeNotificationHandler(handleChatNotification);
+    };
+  }, [
+    addNotificationHandler,
+    removeNotificationHandler,
+    handleChatNotification,
+  ]);
 
   const filteredTickets = complaints.filter((ticket) => {
     const matchesStatus =

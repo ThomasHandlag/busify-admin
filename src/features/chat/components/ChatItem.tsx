@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar, Typography } from "antd";
+import { Avatar, Typography, Badge } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { ChatSession } from "../../../app/api/chat";
@@ -58,11 +58,16 @@ export const ChatItem: React.FC<ChatItemProps> = ({
             <Typography.Text strong style={{ fontSize: 14, color: "#262626" }}>
               {chat.customerName}
             </Typography.Text>
-            <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-              {chat.lastMessageTime
-                ? dayjs(chat.lastMessageTime).format("HH:mm")
-                : ""}
-            </Typography.Text>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {chat.unreadCount && chat.unreadCount > 0 && (
+                <Badge count={chat.unreadCount} size="small" />
+              )}
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                {chat.lastMessageTime
+                  ? dayjs(chat.lastMessageTime).format("HH:mm")
+                  : ""}
+              </Typography.Text>
+            </div>
           </div>
 
           <Typography.Text
