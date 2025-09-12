@@ -158,7 +158,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       setSeatLayout(null);
       setSeatStatuses([]);
     }
-  }, [visible, trip, bookingForm]);
+  }, []);
 
   if (!trip) return null;
 

@@ -311,7 +311,6 @@
 
 // export default RevenueReports;
 
-
 import React, { useState, useMemo } from "react";
 import {
   Card,
@@ -336,7 +335,6 @@ import dayjs from "dayjs";
 import {
   getYearlyRevenue,
   getMonthlyReport,
-  getWeeklyReport,
   getBookingStatusCountsByYear,
   getTopRevenueRoutes,
   getTopRevenueTrips,
@@ -410,12 +408,6 @@ const RevenueReports: React.FC = () => {
     enabled: activeTab === "monthly" && !!selectedOperator,
   });
 
-  const { data: weeklyData, refetch: refetchWeekly } = useQuery({
-    queryKey: ["weeklyReport", selectedOperator],
-    queryFn: () => getWeeklyReport(selectedOperator!),
-    enabled: activeTab === "weekly" && !!selectedOperator,
-  });
-
   // Calculate yearly totals
   const yearlyTotals = useMemo(() => {
     if (!yearlyData?.result) return null;
@@ -444,8 +436,6 @@ const RevenueReports: React.FC = () => {
       refetchYearly();
     } else if (activeTab === "monthly") {
       refetchMonthly();
-    } else if (activeTab === "weekly") {
-      refetchWeekly();
     }
   };
 
@@ -579,9 +569,16 @@ const RevenueReports: React.FC = () => {
                   loading={isLoadingOperators}
                 >
                   {operatorsData?.result?.content?.map(
-                    (operator: { id: number; name: string; email: string }) => (
-                      <Option key={operator.id} value={operator.id}>
-                        {operator.name}
+                    (operator: {
+                      operatorId: number;
+                      operatorName: string;
+                      email: string;
+                    }) => (
+                      <Option
+                        key={operator.operatorId}
+                        value={operator.operatorId}
+                      >
+                        {operator.operatorName}
                       </Option>
                     )
                   )}
@@ -617,7 +614,57 @@ const RevenueReports: React.FC = () => {
           />
         </TabPane>
 
-        
+        {/* Weekly Report Tab */}
+        <TabPane tab="Báo cáo tuần" key="weekly">
+          <Card style={{ marginBottom: "24px" }}>
+            <Row gutter={16} align="middle">
+              <Col>
+                <Select
+                  style={{ width: 200 }}
+                  placeholder="Chọn nhà xe"
+                  value={selectedOperator}
+                  onChange={setSelectedOperator}
+                  loading={isLoadingOperators}
+                >
+                  {operatorsData?.result?.content?.map(
+                    (operator: {
+                      operatorId: number;
+                      operatorName: string;
+                      email: string;
+                    }) => (
+                      <Option
+                        key={operator.operatorId}
+                        value={operator.operatorId}
+                      >
+                        {operator.operatorName}
+                      </Option>
+                    )
+                  )}
+                </Select>
+              </Col>
+              <Col>
+                <YearPicker
+                  value={dayjs().year(selectedYear)}
+                  onChange={(date) =>
+                    setSelectedYear(date?.year() || new Date().getFullYear())
+                  }
+                  placeholder="Chọn năm"
+                />
+              </Col>
+              <Col>
+                <MonthPicker
+                  value={dayjs().month(selectedMonth - 1)}
+                  onChange={(date) =>
+                    setSelectedMonth(
+                      date ? date.month() + 1 : new Date().getMonth() + 1
+                    )
+                  }
+                  placeholder="Chọn tháng"
+                />
+              </Col>
+            </Row>
+          </Card>
+        </TabPane>
       </Tabs>
     </div>
   );

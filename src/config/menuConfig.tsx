@@ -9,6 +9,8 @@ import {
   StarOutlined,
   FrownOutlined,
   MessageOutlined,
+  GiftOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 
 export interface AppMenuItem {
@@ -114,6 +116,18 @@ export const menuItems: AppMenuItem[] = [
     ],
   },
   {
+    key: "promotion-management",
+    icon: <GiftOutlined />,
+    label: "Quản lý Mã giảm giá",
+    roles: ["ADMIN"],
+  },
+  {
+    key: "promotion-campaign-management",
+    icon: <ThunderboltOutlined />,
+    label: "Quản lý Chiến dịch",
+    roles: ["ADMIN"],
+  },
+  {
     key: "role-management",
     icon: <SafetyCertificateOutlined />,
     label: "Phân quyền Vai trò",
@@ -176,6 +190,11 @@ export const routeToKeyMap: Record<string, string> = {
   "/admin/contracts": "list-bus-operator",
   "/admin/revenue-reports": "revenue-reports",
   "/admin/revenue-analytics": "revenue-analytics",
+  "/admin/promotion-management": "promotion-management",
+  "/admin/promotion-campaign-management": "promotion-campaign-management",
+  "/admin/assign-roles": "assign-roles",
+  "/admin/manage-roles": "manage-roles",
+  "/admin/permission-settings": "permission-settings",
   "/admin/tickets": "tickets-customer-service",
   "/admin/bookings": "bookings-customer-service",
   // customer service
