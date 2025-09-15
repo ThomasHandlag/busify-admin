@@ -61,6 +61,34 @@ export interface ComplaintDetailListResponse {
   result: ComplaintDetail[];
 }
 
+export interface ComplaintStats {
+  New: number;
+  pending: number;
+  in_progress: number;
+  resolved: number;
+  rejected: number;
+}
+
+export interface ComplaintStatsResponse {
+  code: number;
+  message: string;
+  result: ComplaintStats;
+}
+
+export interface DailyComplaintStats {
+  newCount: number;
+  pendingCount: number;
+  inProgressCount: number;
+  resolvedCount: number;
+  rejectedCount: number;
+}
+
+export interface DailyComplaintStatsResponse {
+  code: number;
+  message: string;
+  result: DailyComplaintStats;
+}
+
 export interface UpdateComplaintParams {
   title?: string;
   description?: string;
@@ -129,3 +157,23 @@ export const updateComplaintStatus = async (
     throw new Error("Không thể cập nhật trạng thái khiếu nại" + error);
   }
 };
+
+export const getComplaintStatsForCurrentAgent =
+  async (): Promise<ComplaintStatsResponse> => {
+    try {
+      const response = await apiClient.get("api/complaints/agent/stats");
+      return response.data;
+    } catch (error) {
+      throw new Error("Không thể lấy thống kê khiếu nại" + error);
+    }
+  };
+
+export const getDailyComplaintStatsForCurrentAgent =
+  async (): Promise<DailyComplaintStatsResponse> => {
+    try {
+      const response = await apiClient.get("api/complaints/agent/daily-stats");
+      return response.data;
+    } catch (error) {
+      throw new Error("Không thể lấy thống kê khiếu nại hàng ngày" + error);
+    }
+  };

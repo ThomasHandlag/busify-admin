@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Col, Row, message, Spin, Button, Form } from "antd"; // Thêm Form
 import { ExclamationCircleOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { MetricsCard } from "../components/MetricsCard";
 import { TicketsList } from "../components/TicketsList";
 import { DashboardSidebar } from "../components/DashboardSidebar";
@@ -10,6 +9,10 @@ import {
   getComplaintByAgent,
   type ComplaintDetail,
   updateComplaintStatus, // Giả định API này tồn tại để cập nhật trạng thái
+  getComplaintStatsForCurrentAgent,
+  getDailyComplaintStatsForCurrentAgent,
+  type ComplaintStats,
+  type DailyComplaintStats,
 } from "../../../app/api/complaint";
 import { DashboardHeader } from "../components/DashboardHeader";
 import ComplaintDetailModal from "../../complaints-management/components/ComplaintDetailModal";
@@ -36,6 +39,12 @@ export const DashboardWithCustomerService = () => {
   const [selectedTicketForEmail, setSelectedTicketForEmail] =
     useState<ComplaintDetail | null>(null);
   const [mailForm] = Form.useForm(); // Form instance cho modal
+
+  // State cho thống kê
+  const [stats, setStats] = useState<ComplaintStats | null>(null);
+  const [dailyStats, setDailyStats] = useState<DailyComplaintStats | null>(
+    null
+  );
 
   // Thêm state cho chat sessions
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -66,6 +75,33 @@ export const DashboardWithCustomerService = () => {
       message.error(errorMessage);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const [statsResponse, dailyStatsResponse] = await Promise.all([
+        getComplaintStatsForCurrentAgent(),
+        getDailyComplaintStatsForCurrentAgent(),
+      ]);
+
+      if (statsResponse.code === 200) {
+        setStats(statsResponse.result);
+      } else {
+        message.error(
+          statsResponse.message || "Không thể tải thống kê toàn thời gian."
+        );
+      }
+
+      if (dailyStatsResponse.code === 200) {
+        setDailyStats(dailyStatsResponse.result);
+      } else {
+        message.error(
+          dailyStatsResponse.message || "Không thể tải thống kê trong ngày."
+        );
+      }
+    } catch (err) {
+      message.error("Lỗi khi tải dữ liệu thống kê.");
     }
   }, []);
 
@@ -111,7 +147,8 @@ export const DashboardWithCustomerService = () => {
   useEffect(() => {
     fetchComplaints();
     fetchChatSessions(); // Gọi fetch chat sessions
-  }, [fetchComplaints, fetchChatSessions]);
+    fetchStats();
+  }, [fetchComplaints, fetchChatSessions, fetchStats]);
 
   // Set up notification handler for chat updates
   useEffect(() => {
@@ -141,16 +178,13 @@ export const DashboardWithCustomerService = () => {
     return matchesStatus && matchesSearch;
   });
 
-  const stats = {
-    totalOpen: complaints.filter((t) => t.status === "open").length,
-    inProgress: complaints.filter((t) => t.status === "in_progress").length,
-    resolvedToday: complaints.filter(
-      (t) =>
-        t.status === "resolved" && dayjs(t.updatedAt).isSame(dayjs(), "day")
-    ).length,
-    overdue: 0,
-    avgResponseTime: "2.5",
-    customerSatisfaction: 4.2,
+  const metrics = {
+    totalOpen: stats?.New ?? 0,
+    inProgress: stats?.in_progress ?? 0,
+    resolvedToday: dailyStats?.resolvedCount ?? 0,
+    overdue: 0, // Giữ giá trị giả định
+    avgResponseTime: "2.5", // Giữ giá trị giả định
+    customerSatisfaction: 4.2, // Giữ giá trị giả định
   };
 
   const handleTicketAction = (
@@ -204,6 +238,7 @@ export const DashboardWithCustomerService = () => {
 
   const handleRefresh = () => {
     fetchComplaints();
+    fetchStats();
   };
 
   const containerStyle: React.CSSProperties = {
@@ -217,7 +252,7 @@ export const DashboardWithCustomerService = () => {
       <DashboardHeader onRefresh={handleRefresh} />
 
       <MetricsCard
-        stats={stats}
+        stats={metrics}
         searchText={searchText}
         selectedStatus={selectedStatus}
         onSearchChange={setSearchText}
@@ -259,7 +294,7 @@ export const DashboardWithCustomerService = () => {
 
         <Col xs={24} lg={8}>
           <DashboardSidebar
-            customerSatisfaction={stats.customerSatisfaction}
+            customerSatisfaction={metrics.customerSatisfaction}
             chatSessions={chatSessions}
             chatLoading={chatLoading}
             chatError={chatError}
