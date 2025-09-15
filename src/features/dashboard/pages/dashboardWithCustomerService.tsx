@@ -101,7 +101,7 @@ export const DashboardWithCustomerService = () => {
         );
       }
     } catch (err) {
-      message.error("Lỗi khi tải dữ liệu thống kê.");
+      message.error("Lỗi khi tải dữ liệu thống kê." + err);
     }
   }, []);
 
@@ -178,9 +178,13 @@ export const DashboardWithCustomerService = () => {
     return matchesStatus && matchesSearch;
   });
 
+  // Cập nhật đối tượng metrics để bao gồm tất cả trạng thái từ ComplaintStats
   const metrics = {
-    totalOpen: stats?.New ?? 0,
+    new: stats?.New ?? 0,
+    pending: stats?.pending ?? 0,
     inProgress: stats?.in_progress ?? 0,
+    resolved: stats?.resolved ?? 0,
+    rejected: stats?.rejected ?? 0,
     resolvedToday: dailyStats?.resolvedCount ?? 0,
     overdue: 0, // Giữ giá trị giả định
     avgResponseTime: "2.5", // Giữ giá trị giả định

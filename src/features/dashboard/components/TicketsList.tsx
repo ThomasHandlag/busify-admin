@@ -13,6 +13,7 @@ import type { ComplaintDetail } from "../../../app/api/complaint";
 
 interface TicketsListProps {
   tickets: ComplaintDetail[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTicketAction: (action: string, ticketId: number, extra?: any) => void; // Mở rộng để hỗ trợ extra (ví dụ: trạng thái mới)
 }
 
@@ -30,10 +31,11 @@ export const TicketsList: React.FC<TicketsListProps> = ({
   // Menu cho dropdown trạng thái
   const statusMenu = (ticketId: number) => ({
     items: [
-      { key: "pending", label: "Pending" },
-      { key: "in_progress", label: "In Progress" },
-      { key: "resolved", label: "Resolved" },
-      { key: "rejected", label: "Rejected" },
+      { key: "New", label: "Mới" },
+      { key: "pending", label: "Chờ xử lý" },
+      { key: "in_progress", label: "Đang xử lý" },
+      { key: "resolved", label: "Đã giải quyết" },
+      { key: "rejected", label: "Từ chối" },
     ],
     onClick: ({ key }: { key: string }) => {
       onTicketAction("ChangeStatus", ticketId, key); // Gọi với trạng thái mới

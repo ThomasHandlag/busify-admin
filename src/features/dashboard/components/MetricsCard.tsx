@@ -1,24 +1,19 @@
 import React from "react";
-import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Space,
-  Input,
-  Segmented,
-} from "antd";
+import { Card, Row, Col, Statistic, Space, Input, Segmented } from "antd";
 import {
   ExclamationCircleOutlined,
-  ClockCircleOutlined,
   CheckCircleOutlined,
   WarningOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 
+// Cập nhật interface StatsData để bao gồm tất cả trạng thái
 interface StatsData {
-  totalOpen: number;
+  new: number;
+  pending: number;
   inProgress: number;
+  resolved: number;
+  rejected: number;
   resolvedToday: number;
   overdue: number;
   avgResponseTime: string;
@@ -63,15 +58,29 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
             <Space size="large" wrap>
               <Statistic
                 title="Mới"
-                value={stats.totalOpen}
+                value={stats.new}
                 prefix={<ExclamationCircleOutlined />}
                 valueStyle={{ color: "#f5222d" }}
               />
               <Statistic
+                title="Chờ xử lý"
+                value={stats.pending}
+                valueStyle={{ color: "#faad14" }}
+              />
+              <Statistic
                 title="Đang xử lý"
                 value={stats.inProgress}
-                prefix={<ClockCircleOutlined />}
                 valueStyle={{ color: "#1890ff" }}
+              />
+              <Statistic
+                title="Đã giải quyết"
+                value={stats.resolved}
+                valueStyle={{ color: "#52c41a" }}
+              />
+              <Statistic
+                title="Từ chối"
+                value={stats.rejected}
+                valueStyle={{ color: "#722ed1" }}
               />
               <Statistic
                 title="Giải quyết hôm nay"
@@ -105,10 +114,11 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
               <Segmented
                 options={[
                   { label: "Tất cả", value: "all" },
-                  { label: "Mới", value: "open" },
-                  { label: "Đang", value: "in_progress" },
-                  { label: "Giải quyết", value: "resolved" },
-                  { label: "Đã đóng", value: "closed" },
+                  { label: "Mới", value: "New" },
+                  { label: "Chờ xử lý", value: "pending" },
+                  { label: "Đang xử lý", value: "in_progress" },
+                  { label: "Đã giải quyết", value: "resolved" },
+                  { label: "Từ chối", value: "rejected" },
                 ]}
                 value={selectedStatus}
                 onChange={(v) => onStatusChange(String(v))}
