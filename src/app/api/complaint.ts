@@ -172,6 +172,7 @@ export const getDailyComplaintStatsForCurrentAgent =
   async (): Promise<DailyComplaintStatsResponse> => {
     try {
       const response = await apiClient.get("api/complaints/agent/daily-stats");
+      console.log(response.data);
       return response.data;
     } catch (error) {
       throw new Error("Không thể lấy thống kê khiếu nại hàng ngày" + error);

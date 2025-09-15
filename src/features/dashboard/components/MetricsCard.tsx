@@ -3,19 +3,17 @@ import { Card, Row, Col, Statistic, Space, Input, Segmented } from "antd";
 import {
   ExclamationCircleOutlined,
   CheckCircleOutlined,
-  WarningOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 
-// Cập nhật interface StatsData để bao gồm tất cả trạng thái
+// Cập nhật interface StatsData để loại bỏ pending
 interface StatsData {
   new: number;
-  pending: number;
+  // Loại bỏ pending
   inProgress: number;
   resolved: number;
   rejected: number;
   resolvedToday: number;
-  overdue: number;
   avgResponseTime: string;
   customerSatisfaction: number;
 }
@@ -62,11 +60,7 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
                 prefix={<ExclamationCircleOutlined />}
                 valueStyle={{ color: "#f5222d" }}
               />
-              <Statistic
-                title="Chờ xử lý"
-                value={stats.pending}
-                valueStyle={{ color: "#faad14" }}
-              />
+              {/* Loại bỏ Statistic cho "Chờ xử lý" */}
               <Statistic
                 title="Đang xử lý"
                 value={stats.inProgress}
@@ -87,12 +81,6 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
                 value={stats.resolvedToday}
                 prefix={<CheckCircleOutlined />}
                 valueStyle={{ color: "#52c41a" }}
-              />
-              <Statistic
-                title="Quá hạn"
-                value={stats.overdue}
-                prefix={<WarningOutlined />}
-                valueStyle={{ color: "#fa8c16" }}
               />
             </Space>
 
@@ -115,7 +103,6 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
                 options={[
                   { label: "Tất cả", value: "all" },
                   { label: "Mới", value: "New" },
-                  { label: "Chờ xử lý", value: "pending" },
                   { label: "Đang xử lý", value: "in_progress" },
                   { label: "Đã giải quyết", value: "resolved" },
                   { label: "Từ chối", value: "rejected" },

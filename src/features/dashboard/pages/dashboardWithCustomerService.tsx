@@ -178,15 +178,15 @@ export const DashboardWithCustomerService = () => {
     return matchesStatus && matchesSearch;
   });
 
-  // Cập nhật đối tượng metrics để bao gồm tất cả trạng thái từ ComplaintStats
+  // Cập nhật đối tượng metrics để loại bỏ overdue
   const metrics = {
-    new: stats?.New ?? 0,
+    new: dailyStats?.inProgressCount ?? 0,
     pending: stats?.pending ?? 0,
     inProgress: stats?.in_progress ?? 0,
     resolved: stats?.resolved ?? 0,
     rejected: stats?.rejected ?? 0,
     resolvedToday: dailyStats?.resolvedCount ?? 0,
-    overdue: 0, // Giữ giá trị giả định
+    // Loại bỏ overdue
     avgResponseTime: "2.5", // Giữ giá trị giả định
     customerSatisfaction: 4.2, // Giữ giá trị giả định
   };
@@ -210,21 +210,29 @@ export const DashboardWithCustomerService = () => {
         setSelectedTicketForEmail(complaint);
         setIsMailModalVisible(true);
       } else {
-        message.error("Không tìm thấy khiếu nại để gửi email");
+        message.error("Không tìm thấy khiếu nại");
       }
     } else if (action === "ChangeStatus") {
-      // Cập nhật trạng thái local
+      // Cập nhật trạng thái local trước để phản hồi nhanh
       setComplaints((prev) =>
         prev.map((c) => (c.id === ticketId ? { ...c, status: extra } : c))
       );
-      // Gọi API để cập nhật trạng thái (giả định)
+      // Gọi API để cập nhật trạng thái
       updateComplaintStatus(ticketId, extra)
-        .then(() =>
+        .then(() => {
           message.success(
             `Trạng thái khiếu nại ${ticketId} đã được cập nhật thành ${extra}`
-          )
-        )
-        .catch(() => message.error("Lỗi khi cập nhật trạng thái"));
+          );
+          // Reload dữ liệu sau khi cập nhật thành công
+          fetchComplaints();
+          fetchStats();
+        })
+        .catch((error) => {
+          message.error("Lỗi khi cập nhật trạng thái: " + error.message);
+          // Nếu lỗi, có thể revert local state hoặc reload để đồng bộ
+          fetchComplaints();
+          fetchStats();
+        });
     } else {
       message.success(`${action} ticket ${ticketId}`);
     }
