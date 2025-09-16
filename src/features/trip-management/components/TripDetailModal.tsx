@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react"; // Add useCallback import
 import {
   Drawer,
   Descriptions,
@@ -65,11 +65,6 @@ const PALETTE = {
 };
 
 // Mock seat data as fallback
-const seatMockData = {
-  cols: 4,
-  rows: 10,
-  floors: 1,
-};
 
 interface TripDetailModalProps {
   trip: Trip | null;
@@ -88,7 +83,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
   const [bookingLoading, setBookingLoading] = useState(false);
 
   // New state variables for API data
-  const [seatLayout, setSeatLayout] = useState<LayoutData | null>(null);
+  const [, setSeatLayout] = useState<LayoutData | null>(null);
   const [seatStatuses, setSeatStatuses] = useState<SeatStatus[]>([]);
   const [seatLoading, setSeatLoading] = useState(false);
 
@@ -103,8 +98,8 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
   // Thêm state để phân biệt loại email (hành khách hay nhà xe)
   const [isForOperator, setIsForOperator] = useState(false);
 
-  // Function to fetch seat data from APIs
-  const fetchSeatData = async () => {
+  // Function to fetch seat data from APIs - memoize with useCallback
+  const fetchSeatData = useCallback(async () => {
     if (!trip || !visible) return;
 
     setSeatLoading(true);
@@ -132,7 +127,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
     } finally {
       setSeatLoading(false);
     }
-  };
+  }, [trip, visible]); // Dependencies for fetchSeatData
 
   // Reset state when trip changes or drawer visibility changes
   useEffect(() => {
@@ -158,20 +153,24 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       setSeatLayout(null);
       setSeatStatuses([]);
     }
-  }, [visible, trip, bookingForm]);
+  }, [visible, trip, bookingForm, fetchSeatData]); // Add fetchSeatData to dependencies
 
   if (!trip) return null;
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "scheduled":
-        return PALETTE.success;
-      case "cancelled":
-        return PALETTE.danger;
-      case "completed":
-        return PALETTE.accent;
+        return PALETTE.muted; // Gray for scheduled
+      case "on_sell":
+        return PALETTE.success; // Green for on sale
       case "delayed":
-        return PALETTE.warning;
+        return PALETTE.warning; // Orange for delayed
+      case "departed":
+        return "#1890ff"; // Blue for departed
+      case "arrived":
+        return PALETTE.accent; // Purple for arrived
+      case "cancelled":
+        return PALETTE.danger; // Red for cancelled
       default:
         return PALETTE.muted;
     }
@@ -181,12 +180,16 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
     switch (status) {
       case "scheduled":
         return "Đã lên lịch";
-      case "cancelled":
-        return "Đã hủy";
-      case "completed":
-        return "Hoàn thành";
+      case "on_sell":
+        return "Đã mở bán";
       case "delayed":
-        return "Bị trễ";
+        return "Bị hoãn";
+      case "departed":
+        return "Đã khởi hành";
+      case "arrived":
+        return "Đã đến nơi";
+      case "cancelled":
+        return "Bị hủy";
       default:
         return status;
     }
@@ -325,7 +328,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
 
   // Add this function to check if trip is bookable
   const isTripBookable = (status: string): boolean => {
-    return !["cancelled", "delayed", "departed"].includes(status);
+    return status === "on_sell"; // Only on_sell trips are bookable
   };
 
   // Custom close handler to ensure cleanup
@@ -472,7 +475,6 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
                   ) : (
                     <TripSeatSelector
                       key={`seat-selector-${trip?.trip_id}`}
-                      seatConfig={seatLayout || seatMockData}
                       selectedSeats={selectedSeats}
                       onSeatSelect={handleSeatSelect}
                       availableSeats={trip?.available_seats || 0}
@@ -487,15 +489,23 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
                       <Space direction="vertical" style={{ width: "100%" }}>
                         <div>
                           <Text strong>Ghế đã chọn:</Text>{" "}
-                          {selectedSeats.map((seat) => (
-                            <Tag
-                              color={PALETTE.primary}
-                              key={seat}
-                              style={{ margin: "2px" }}
-                            >
-                              {seat}
-                            </Tag>
-                          ))}
+                          {selectedSeats.map((seatNumber) => {
+                            // Parse seat number to display format (e.g., "A.1.1" -> "A1")
+                            const parts = seatNumber.split(".");
+                            const displayLabel =
+                              parts.length >= 2
+                                ? `${parts[0]}${parts[1]}`
+                                : seatNumber;
+                            return (
+                              <Tag
+                                color={PALETTE.primary}
+                                key={seatNumber}
+                                style={{ margin: "2px" }}
+                              >
+                                {displayLabel}
+                              </Tag>
+                            );
+                          })}
                         </div>
                         <div>
                           <Text strong>Tổng tiền:</Text>{" "}
