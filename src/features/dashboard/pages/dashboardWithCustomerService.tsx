@@ -17,7 +17,7 @@ import { DashboardHeader } from "../components/DashboardHeader";
 import ComplaintDetailModal from "../../complaints-management/components/ComplaintDetailModal";
 import MailSenderModal from "../../../components/MailSenderModal";
 import type { ChatSession } from "../../../app/api/chat";
-import { fetchRecentChatSessions } from "../../../app/api/chat";
+import { fetchChatSessions } from "../../../app/api/chat";
 import { useWebSocket } from "../../../app/provider/WebSocketContext";
 import type { ChatNotification } from "../../../app/service/WebSocketService";
 
@@ -96,49 +96,52 @@ export const DashboardWithCustomerService = () => {
   });
   // --- Kết thúc tích hợp React Query ---
 
-  // State và logic cho Chat vẫn giữ nguyên
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const [chatLoading, setChatLoading] = useState<boolean>(true);
-  const [chatError, setChatError] = useState<string | null>(null);
+  // --- Tích hợp React Query cho Chat ---
   const { addNotificationHandler, removeNotificationHandler } = useWebSocket();
 
-  const fetchChatSessions = useCallback(async () => {
-    setChatLoading(true);
-    setChatError(null);
-    try {
-      const sessions = await fetchRecentChatSessions();
-      setChatSessions(sessions);
-    } catch (err: any) {
-      const errorMessage =
-        err.message || "Không thể tải danh sách chat sessions.";
-      setChatError(errorMessage);
-      message.error(errorMessage);
-    } finally {
-      setChatLoading(false);
-    }
-  }, []);
+  const {
+    data: allChatSessions = [],
+    isLoading: chatLoading,
+    isError: isChatError,
+    error: chatError,
+  } = useQuery<ChatSession[], Error>({
+    queryKey: ["chatSessions"], // Sử dụng query key chung
+    queryFn: fetchChatSessions, // Sử dụng hàm fetch chung
+    staleTime: 5 * 60 * 1000, // 5 phút
+    refetchOnWindowFocus: true,
+  });
 
   const handleChatNotification = useCallback(
     (notification: ChatNotification) => {
-      setChatSessions((prev) =>
-        prev.map((chat) =>
-          chat.id === notification.roomId
-            ? {
-                ...chat,
-                lastMessage: notification.contentPreview,
-                lastMessageTime: notification.timestamp,
-                unreadCount: (chat.unreadCount || 0) + 1,
-              }
-            : chat
-        )
+      queryClient.setQueryData<ChatSession[]>(
+        ["chatSessions"],
+        (oldSessions = []) => {
+          const sessionExists = oldSessions.some(
+            (chat) => chat.id === notification.roomId
+          );
+
+          if (sessionExists) {
+            // Cập nhật session đã có
+            return oldSessions.map((chat) =>
+              chat.id === notification.roomId
+                ? {
+                    ...chat,
+                    lastMessage: notification.contentPreview,
+                    lastMessageTime: notification.timestamp,
+                    unreadCount: (chat.unreadCount || 0) + 1,
+                  }
+                : chat
+            );
+          } else {
+            // Nếu session chưa có, làm mới toàn bộ danh sách để lấy session mới
+            queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
+            return oldSessions;
+          }
+        }
       );
     },
-    []
+    [queryClient]
   );
-
-  useEffect(() => {
-    fetchChatSessions();
-  }, [fetchChatSessions]);
 
   useEffect(() => {
     addNotificationHandler(handleChatNotification);
@@ -150,6 +153,7 @@ export const DashboardWithCustomerService = () => {
     removeNotificationHandler,
     handleChatNotification,
   ]);
+  // --- Kết thúc tích hợp React Query cho Chat ---
 
   const filteredTickets = complaints.filter((ticket) => {
     const matchesStatus =
@@ -212,7 +216,7 @@ export const DashboardWithCustomerService = () => {
     message.loading("Đang làm mới...", 0.5);
     queryClient.invalidateQueries({ queryKey: ["complaints", "agent"] });
     queryClient.invalidateQueries({ queryKey: ["complaintStats", "agent"] });
-    fetchChatSessions(); // Chat chưa dùng react-query nên gọi thủ công
+    queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
   };
 
   const containerStyle: React.CSSProperties = {
@@ -276,9 +280,9 @@ export const DashboardWithCustomerService = () => {
         <Col xs={24} lg={8}>
           <DashboardSidebar
             customerSatisfaction={metrics.customerSatisfaction}
-            chatSessions={chatSessions}
+            chatSessions={allChatSessions} // Truyền toàn bộ danh sách
             chatLoading={chatLoading}
-            chatError={chatError}
+            chatError={isChatError ? chatError.message : null}
           />
         </Col>
       </Row>

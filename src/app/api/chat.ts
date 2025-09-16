@@ -33,10 +33,3 @@ export const fetchMessages = async (chatId: string): Promise<ChatMessage[]> => {
   );
   return response.data;
 };
-
-export const fetchRecentChatSessions = async (): Promise<ChatSession[]> => {
-  const response = await apiClient.get<ChatSession[]>(
-    "api/chat/recent-sessions"
-  );
-  return response.data;
-};
