@@ -35,6 +35,7 @@ import dayjs from "dayjs";
 import BookingDetailModal from "../components/BookingDetailModal";
 import {
   searchBookings,
+  getAllBookingsForStats,
   type SearchBookingParams,
   type Booking,
 } from "../../../app/api/booking";
@@ -66,6 +67,47 @@ const BookingsWithCustomerService: React.FC = () => {
     placeholderData: (previousData) => previousData,
   });
 
+  // Get statistics parameters (without page/size)
+  const getStatisticsParams = () => {
+    const formValues = form.getFieldsValue();
+    const { bookingCode, routeName, status, fromDate, toDate } = formValues;
+
+    const statsParams: Omit<SearchBookingParams, "page" | "size"> = {};
+    if (bookingCode) statsParams.bookingCode = bookingCode;
+    if (routeName) statsParams.route = routeName;
+    if (status) statsParams.status = status;
+    if (fromDate) statsParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
+    if (toDate) statsParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
+
+    return statsParams;
+  };
+
+  // TanStack Query for booking statistics (using large page size to get all data)
+  const { data: statisticsData, isLoading: isLoadingStats } = useQuery({
+    queryKey: ["booking-statistics", getStatisticsParams()],
+    queryFn: () => getAllBookingsForStats(getStatisticsParams()),
+    select: (data) => {
+      // Calculate statistics from the full dataset
+      const bookings = data?.result?.result || [];
+      return {
+        total: bookings.length,
+        confirmed: bookings.filter((b) => b.status === "confirmed").length,
+        pending: bookings.filter((b) => b.status === "pending").length,
+        cancelled: bookings.filter(
+          (b) =>
+            b.status === "canceled_by_user" ||
+            b.status === "canceled_by_operator" ||
+            b.status === "cancelled"
+        ).length,
+        completed: bookings.filter((b) => b.status === "completed").length,
+        totalRevenue: bookings.reduce(
+          (sum, booking) => sum + booking.total_amount,
+          0
+        ),
+      };
+    },
+  });
+
   // Handle query error
   useEffect(() => {
     if (isError) {
@@ -75,11 +117,11 @@ const BookingsWithCustomerService: React.FC = () => {
   }, [isError, error]);
 
   // Extract data from query result
-  const searchResults = bookingsData?.result.result || [];
+  const searchResults = bookingsData?.result?.result || [];
   const pagination = {
-    current: bookingsData?.result.pageNumber || 1,
-    pageSize: bookingsData?.result.pageSize || 10,
-    total: bookingsData?.result.totalRecords || 0,
+    current: bookingsData?.result?.pageNumber || 1,
+    pageSize: bookingsData?.result?.pageSize || 10,
+    total: bookingsData?.result?.totalRecords || 0,
   };
 
   const handleSearch = async (values: any) => {
@@ -108,11 +150,12 @@ const BookingsWithCustomerService: React.FC = () => {
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleTableChange = (
     paginationInfo: any,
-    _filters: any,
-    _sorter: any
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    filters: any,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    sorter: any
   ) => {
     const formValues = form.getFieldsValue();
     const { bookingCode, routeName, status, fromDate, toDate } = formValues;
@@ -340,14 +383,11 @@ const BookingsWithCustomerService: React.FC = () => {
     },
   ];
 
-  const stats = {
-    total: searchResults.length,
-    confirmed: searchResults.filter((b) => b.status === "confirmed").length,
-    pending: searchResults.filter((b) => b.status === "pending").length,
-    totalRevenue: searchResults.reduce(
-      (sum, booking) => sum + booking.total_amount,
-      0
-    ),
+  const stats = statisticsData || {
+    total: 0,
+    confirmed: 0,
+    pending: 0,
+    totalRevenue: 0,
   };
 
   return (
@@ -450,6 +490,7 @@ const BookingsWithCustomerService: React.FC = () => {
               value={stats.total}
               prefix={<BookOutlined />}
               valueStyle={{ color: "#1890ff" }}
+              loading={isLoadingStats}
             />
           </Card>
         </Col>
@@ -459,6 +500,7 @@ const BookingsWithCustomerService: React.FC = () => {
               title="Đã xác nhận"
               value={stats.confirmed}
               valueStyle={{ color: "#52c41a" }}
+              loading={isLoadingStats}
             />
           </Card>
         </Col>
@@ -468,6 +510,7 @@ const BookingsWithCustomerService: React.FC = () => {
               title="Chờ xử lý"
               value={stats.pending}
               valueStyle={{ color: "#faad14" }}
+              loading={isLoadingStats}
             />
           </Card>
         </Col>
@@ -479,6 +522,7 @@ const BookingsWithCustomerService: React.FC = () => {
               prefix={<DollarOutlined />}
               suffix="VNĐ"
               valueStyle={{ color: "#722ed1" }}
+              loading={isLoadingStats}
             />
           </Card>
         </Col>

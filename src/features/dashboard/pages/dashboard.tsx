@@ -11,6 +11,9 @@ import {
   Tag,
   List,
   Badge,
+  Spin,
+  Button,
+  Alert,
 } from "antd";
 import {
   UserOutlined,
@@ -27,53 +30,63 @@ import {
   EditOutlined,
   SearchOutlined,
   DeleteOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { NotificationDemo } from "../../../components/NotificationDemo";
 import { useAuthStore } from "../../../stores/auth_store";
+import { useDashboardStats, useRecentActivities } from "../hooks/useDashboard";
+import { DashboardCharts } from "../components/DashboardCharts";
 
 const { Title, Text, Paragraph } = Typography;
 
 const Dashboard = () => {
   const auth = useAuthStore();
 
-  console.log("Auth:", auth);
+  // Use dashboard hooks for dynamic data
+  const {
+    stats,
+    loading: statsLoading,
+    error: statsError,
+    refetch: refetchStats,
+  } = useDashboardStats(true, 30000);
+  const {
+    activities,
+    loading: activitiesLoading,
+    error: activitiesError,
+    refetch: refetchActivities,
+  } = useRecentActivities(10, true, 15000);
 
-  // Mock data for dashboard statistics
-  const dashboardStats = {
+  console.log("Auth:", auth);
+  console.log("🔍 Dashboard API Data:", {
+    stats,
+    activities,
+    statsLoading,
+    activitiesLoading,
+    statsError,
+    activitiesError,
+  });
+
+  // Fallback data for when API is not available
+  const fallbackStats = {
     totalUsers: 1248,
     totalVehicles: 156,
     totalRoutes: 24,
     monthlyRevenue: 485920000,
-    activeRoutes: 18,
+    activeRoutes: 89, // Now represents weekly bookings
     pendingUsers: 12,
+    todayBookings: 45,
+    pendingComplaints: 8,
+    completedTrips: 1250,
+    cancelledTrips: 25,
   };
 
-  const recentActivities = [
-    {
-      action: "Thêm người dùng mới",
-      user: "admin@busify.com",
-      time: "2 phút trước",
-      type: "user",
-    },
-    {
-      action: "Cập nhật thông tin nhà xe",
-      user: "manager@busify.com",
-      time: "15 phút trước",
-      type: "vehicle",
-    },
-    {
-      action: "Thêm tuyến xe mới",
-      user: "admin@busify.com",
-      time: "1 giờ trước",
-      type: "route",
-    },
-    {
-      action: "Xóa người dùng",
-      user: "admin@busify.com",
-      time: "2 giờ trước",
-      type: "user",
-    },
-  ];
+  // Use API data if available, otherwise fallback
+  const dashboardStats = stats || fallbackStats;
+  const recentActivities = activities.length > 0 ? activities : [];
+
+  // Show data source for debugging
+  const dataSource = stats ? "API" : "Fallback";
+  console.log(`📊 Using ${dataSource} data:`, dashboardStats);
 
   const quickActions = [
     {
@@ -161,104 +174,179 @@ const Dashboard = () => {
                     </Title>
                     <Text type="secondary">Vai trò: </Text>
                     <Tag color="blue">{auth.loggedInUser.role}</Tag>
+                    <Tag
+                      color={stats ? "green" : "orange"}
+                      style={{ marginLeft: "8px" }}
+                    >
+                      {stats ? "📊 Live Data" : "🔄 Demo Data"}
+                    </Tag>
                   </div>
                 </Space>
               </Col>
+              <Col>
+                <Space>
+                  <Button
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                      refetchStats();
+                      refetchActivities();
+                    }}
+                  >
+                    Làm mới
+                  </Button>
+                  <Button
+                    type="dashed"
+                    onClick={async () => {
+                      // Test individual APIs
+                      try {
+                        console.log("🔍 Testing APIs individually...");
+
+                        const { getAllUsersManagement } = await import(
+                          "../../../app/api/user"
+                        );
+                        const userTest = await getAllUsersManagement({
+                          page: 1,
+                          size: 1,
+                        });
+                        console.log("👥 Users API:", userTest);
+
+                        const { getAllTrips } = await import(
+                          "../../../app/api/trip"
+                        );
+                        const tripTest = await getAllTrips();
+                        console.log("🚌 Trips API:", tripTest);
+
+                        alert("Check console for API results!");
+                      } catch (error) {
+                        console.error("❌ API Test Error:", error);
+                        alert("API test failed - check console");
+                      }
+                    }}
+                  >
+                    Test APIs
+                  </Button>
+                </Space>
+              </Col>
             </Row>
+            {(statsError || activitiesError) && (
+              <Alert
+                message="Lỗi tải dữ liệu"
+                description={statsError || activitiesError}
+                type="warning"
+                style={{ marginTop: "16px" }}
+                closable
+              />
+            )}
           </Card>
 
           {/* Statistics Cards */}
-          <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="Tổng số Người dùng"
-                  value={dashboardStats.totalUsers}
-                  prefix={<TeamOutlined />}
-                  valueStyle={{ color: "#1890ff" }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="Tổng số Nhà xe"
-                  value={dashboardStats.totalVehicles}
-                  prefix={<TruckOutlined />}
-                  valueStyle={{ color: "#52c41a" }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="Tổng số Tuyến xe"
-                  value={dashboardStats.totalRoutes}
-                  prefix={<ReadOutlined />}
-                  valueStyle={{ color: "#fa8c16" }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="Doanh thu tháng"
-                  value={dashboardStats.monthlyRevenue}
-                  prefix={<RiseOutlined />}
-                  suffix="VND"
-                  valueStyle={{ color: "#eb2f96" }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          {/* Quick Actions Grid */}
-          <Title level={3}>Chức năng chính</Title>
-          <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
-            {quickActions.map((action, index) => (
-              <Col xs={24} sm={12} lg={8} key={index}>
-                <Card
-                  style={{ backgroundColor: action.color, height: "100%" }}
-                  hoverable
-                  actions={[
-                    <PlusOutlined key="add" />,
-                    <EditOutlined key="edit" />,
-                    <SearchOutlined key="search" />,
-                    <DeleteOutlined key="delete" />,
-                  ]}
-                >
-                  <Card.Meta
-                    avatar={action.icon}
-                    title={action.title}
-                    description={
-                      <div>
-                        <Paragraph>{action.description}</Paragraph>
-                        <div>
-                          {action.actions.map((act, idx) => (
-                            <Tag key={idx} style={{ marginBottom: "4px" }}>
-                              {act}
-                            </Tag>
-                          ))}
-                        </div>
-                      </div>
+          <Spin spinning={statsLoading}>
+            <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Tổng số Người dùng"
+                    value={dashboardStats.totalUsers}
+                    prefix={<TeamOutlined />}
+                    valueStyle={{ color: "#1890ff" }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Tổng số Nhà xe"
+                    value={dashboardStats.totalVehicles}
+                    prefix={<TruckOutlined />}
+                    valueStyle={{ color: "#52c41a" }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Tổng số Chuyến xe"
+                    value={dashboardStats.totalRoutes}
+                    prefix={<ReadOutlined />}
+                    valueStyle={{ color: "#fa8c16" }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Doanh thu tháng"
+                    value={dashboardStats.monthlyRevenue}
+                    prefix={<RiseOutlined />}
+                    suffix="VND"
+                    valueStyle={{ color: "#eb2f96" }}
+                    formatter={(value) =>
+                      new Intl.NumberFormat("vi-VN").format(Number(value))
                     }
                   />
                 </Card>
               </Col>
-            ))}
-          </Row>
+            </Row>
+          </Spin>
+
+          {/* Additional Statistics Row */}
+          <Spin spinning={statsLoading}>
+            <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Đặt vé hôm nay"
+                    value={dashboardStats.todayBookings}
+                    prefix={<ReadOutlined />}
+                    valueStyle={{ color: "#722ed1" }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Chuyến hoàn thành"
+                    value={dashboardStats.completedTrips}
+                    prefix={<RiseOutlined />}
+                    valueStyle={{ color: "#52c41a" }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Chuyến đã hủy"
+                    value={dashboardStats.cancelledTrips}
+                    prefix={<UserOutlined />}
+                    valueStyle={{ color: "#ff4d4f" }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Đặt vé trong tuần"
+                    value={dashboardStats.activeRoutes}
+                    prefix={<CarOutlined />}
+                    suffix="vé"
+                    valueStyle={{ color: "#1890ff" }}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          </Spin>
 
           {/* System Overview and Recent Activities */}
-          <Row gutter={[16, 16]}>
+          <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
             <Col xs={24} lg={12}>
               <Card title="Tổng quan hệ thống" extra={<EyeOutlined />}>
                 <Space direction="vertical" style={{ width: "100%" }}>
                   <div>
-                    <Text>Tuyến xe đang hoạt động</Text>
+                    <Text>Tỷ lệ đặt vé tuần/tháng</Text>
                     <Progress
                       percent={Math.round(
                         (dashboardStats.activeRoutes /
-                          dashboardStats.totalRoutes) *
+                          (dashboardStats.todayBookings * 7 + 1)) *
                           100
                       )}
                       status="active"
@@ -268,21 +356,21 @@ const Dashboard = () => {
                   <Row gutter={16}>
                     <Col span={12}>
                       <Statistic
-                        title="Người dùng chờ duyệt"
-                        value={dashboardStats.pendingUsers}
+                        title="Chuyến hoàn thành"
+                        value={dashboardStats.completedTrips}
                         suffix={
                           <Badge
-                            count={dashboardStats.pendingUsers}
-                            style={{ backgroundColor: "#faad14" }}
+                            count={dashboardStats.completedTrips}
+                            style={{ backgroundColor: "#52c41a" }}
                           />
                         }
                       />
                     </Col>
                     <Col span={12}>
                       <Statistic
-                        title="Tuyến xe hoạt động"
+                        title="Đặt vé tuần này"
                         value={dashboardStats.activeRoutes}
-                        suffix={`/${dashboardStats.totalRoutes}`}
+                        suffix="vé"
                       />
                     </Col>
                   </Row>
@@ -291,48 +379,72 @@ const Dashboard = () => {
             </Col>
 
             <Col xs={24} lg={12}>
-              <Card title="Hoạt động gần đây" extra={<FileTextOutlined />}>
-                <List
-                  dataSource={recentActivities}
-                  renderItem={(item) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={
-                          <Avatar
-                            icon={
-                              item.type === "user" ? (
-                                <UserOutlined />
-                              ) : item.type === "vehicle" ? (
-                                <CarOutlined />
-                              ) : (
-                                <ReadOutlined />
-                              )
-                            }
-                            style={{
-                              backgroundColor:
-                                item.type === "user"
-                                  ? "#1890ff"
-                                  : item.type === "vehicle"
-                                  ? "#52c41a"
-                                  : "#fa8c16",
-                            }}
-                          />
-                        }
-                        title={item.action}
-                        description={
-                          <div>
-                            <Text type="secondary">{item.user}</Text>
-                            <br />
-                            <Text type="secondary" style={{ fontSize: "12px" }}>
-                              {item.time}
+              <Card
+                title="Hoạt động gần đây"
+                extra={<FileTextOutlined />}
+                size="small"
+                style={{ maxHeight: "400px" }}
+              >
+                <Spin spinning={activitiesLoading}>
+                  <List
+                    size="small"
+                    dataSource={recentActivities.slice(0, 5)}
+                    renderItem={(item) => (
+                      <List.Item style={{ padding: "8px 0" }}>
+                        <List.Item.Meta
+                          avatar={
+                            <Avatar
+                              size="small"
+                              icon={
+                                item.type === "user" ? (
+                                  <UserOutlined />
+                                ) : item.type === "vehicle" ? (
+                                  <CarOutlined />
+                                ) : item.type === "booking" ? (
+                                  <ReadOutlined />
+                                ) : item.type === "complaint" ? (
+                                  <FileTextOutlined />
+                                ) : (
+                                  <ReadOutlined />
+                                )
+                              }
+                              style={{
+                                backgroundColor:
+                                  item.type === "user"
+                                    ? "#1890ff"
+                                    : item.type === "vehicle"
+                                    ? "#52c41a"
+                                    : item.type === "booking"
+                                    ? "#fa8c16"
+                                    : item.type === "complaint"
+                                    ? "#eb2f96"
+                                    : "#fa8c16",
+                              }}
+                            />
+                          }
+                          title={
+                            <Text ellipsis style={{ fontSize: "14px" }}>
+                              {item.action}
                             </Text>
-                          </div>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
+                          }
+                          description={
+                            <Text type="secondary" style={{ fontSize: "12px" }}>
+                              {item.user}
+                            </Text>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                </Spin>
               </Card>
+            </Col>
+          </Row>
+
+          {/* Revenue Charts */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24}>
+              <DashboardCharts />
             </Col>
           </Row>
         </div>

@@ -193,3 +193,35 @@ export const deleteBooking = async (bookingCode: string): Promise<boolean> => {
     throw new Error("Không thể xóa đặt vé" + error);
   }
 };
+
+// Get all bookings for statistics (using large page size)
+export const getAllBookingsForStats = async (
+  params: Omit<SearchBookingParams, "page" | "size"> = {}
+): Promise<SearchBookingResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+
+    // Add optional parameters to query string (same as search but with large page size)
+    if (params.bookingCode)
+      queryParams.append("bookingCode", params.bookingCode);
+    if (params.route) queryParams.append("route", params.route);
+    if (params.status) queryParams.append("status", params.status);
+    if (params.departureDate)
+      queryParams.append("departureDate", params.departureDate);
+    if (params.arrivalDate)
+      queryParams.append("arrivalDate", params.arrivalDate);
+    if (params.startDate) queryParams.append("startDate", params.startDate);
+    if (params.endDate) queryParams.append("endDate", params.endDate);
+
+    // Use large page size to get all records for statistics
+    queryParams.append("page", "1");
+    queryParams.append("size", "10000"); // Large number to get all records
+
+    const response = await apiClient.get(
+      `api/bookings/search?${queryParams.toString()}`
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Không thể lấy dữ liệu thống kê đặt vé" + error);
+  }
+};
