@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useCallback } from "react"; // Add useCallback import
+import React, { useState, useEffect } from "react";
 import {
   Drawer,
   Descriptions,
@@ -44,11 +44,11 @@ import dayjs from "dayjs";
 import type { Trip } from "../../../app/api/trip";
 import TripSeatSelector from "./TripSeatSelector";
 // Import the API functions
-import { getTripSeats, type SeatStatus } from "../../../app/api/tripSeat";
-import { getSeatLayout, type LayoutData } from "../../../app/api/seatLayout";
+import { getTripSeats } from "../../../app/api/tripSeat";
+import { getSeatLayout } from "../../../app/api/seatLayout";
 import MailSenderModal from "../../../components/MailSenderModal";
 import BulkMailSenderModal from "../../../components/BulkMailSenderModal"; // Add import for BulkMailSenderModal
-// Add import for MailSenderModal (adjust path if needed based on your workspace structure)
+import { useQuery } from "@tanstack/react-query";
 
 const { Title, Text } = Typography;
 
@@ -82,10 +82,10 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
   const [bookingForm] = Form.useForm();
   const [bookingLoading, setBookingLoading] = useState(false);
 
-  // New state variables for API data
-  const [, setSeatLayout] = useState<LayoutData | null>(null);
-  const [seatStatuses, setSeatStatuses] = useState<SeatStatus[]>([]);
-  const [seatLoading, setSeatLoading] = useState(false);
+  // Remove manual state management for seat data
+  // const [, setSeatLayout] = useState<LayoutData | null>(null);
+  // const [seatStatuses, setSeatStatuses] = useState<SeatStatus[]>([]);
+  // const [seatLoading, setSeatLoading] = useState(false);
 
   // Add state for mail modal
   const [isMailModalVisible, setIsMailModalVisible] = useState(false);
@@ -98,36 +98,62 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
   // Thêm state để phân biệt loại email (hành khách hay nhà xe)
   const [isForOperator, setIsForOperator] = useState(false);
 
-  // Function to fetch seat data from APIs - memoize with useCallback
-  const fetchSeatData = useCallback(async () => {
-    if (!trip || !visible) return;
-
-    setSeatLoading(true);
-    try {
-      // Fetch seat layout
-      const layoutResponse = await getSeatLayout(trip.trip_id.toString());
-      if (layoutResponse.code === 200) {
-        console.log("Seat layout data:", layoutResponse.result.layoutData);
-        setSeatLayout(layoutResponse.result.layoutData);
+  // Use React Query to fetch seat layout
+  const {
+    isLoading: seatLayoutLoading,
+    isError: seatLayoutError,
+  } = useQuery({
+    queryKey: ["seatLayout", trip?.trip_id],
+    queryFn: async () => {
+      if (!trip?.trip_id) throw new Error("No trip ID");
+      const response = await getSeatLayout(trip.trip_id.toString());
+      if (response.code === 200) {
+        return response.result.layoutData;
       } else {
-        message.error("Không thể tải thông tin bố trí ghế");
+        throw new Error("Không thể tải thông tin bố trí ghế");
       }
+    },
+    enabled: !!trip?.trip_id && visible, // Only fetch when we have a trip ID and modal is visible
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+  });
 
-      // Fetch seat statuses
-      const statusResponse = await getTripSeats(trip.trip_id);
-      if (statusResponse.code === 200) {
-        console.log("Seat status data:", statusResponse.result.seatsStatus);
-        setSeatStatuses(statusResponse.result.seatsStatus);
+  // Use React Query to fetch seat statuses
+  const {
+    data: seatStatuses = [],
+    isLoading: seatStatusLoading,
+    isError: seatStatusError,
+    refetch: refetchSeatStatuses,
+  } = useQuery({
+    queryKey: ["tripSeats", trip?.trip_id],
+    queryFn: async () => {
+      if (!trip?.trip_id) throw new Error("No trip ID");
+      const response = await getTripSeats(trip.trip_id);
+      if (response.code === 200) {
+        return response.result.seatsStatus;
       } else {
-        message.error("Không thể tải trạng thái ghế");
+        throw new Error("Không thể tải trạng thái ghế");
       }
-    } catch (error) {
-      console.error("Error fetching seat data:", error);
-      message.error("Không thể tải thông tin ghế");
-    } finally {
-      setSeatLoading(false);
+    },
+    enabled: !!trip?.trip_id && visible, // Only fetch when we have a trip ID and modal is visible
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes (seat status changes more frequently)
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds when component is active
+  });
+
+  // Combined loading state for seat data
+  const seatLoading = seatLayoutLoading || seatStatusLoading;
+
+  // Show error messages for seat data fetching
+  useEffect(() => {
+    if (seatLayoutError) {
+      message.error("Không thể tải thông tin bố trí ghế");
     }
-  }, [trip, visible]); // Dependencies for fetchSeatData
+    if (seatStatusError) {
+      message.error("Không thể tải trạng thái ghế");
+    }
+  }, [seatLayoutError, seatStatusError]);
+
+  // Remove the fetchSeatData function since we're using React Query
+  // const fetchSeatData = useCallback(async () => { ... });
 
   // Reset state when trip changes or drawer visibility changes
   useEffect(() => {
@@ -139,8 +165,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       bookingForm.resetFields();
       // Hide booking form
       setBookingModalVisible(false);
-      // Fetch seat data from API
-      fetchSeatData();
+      // No need to manually fetch seat data - React Query handles this
     }
 
     // When drawer closes, clean up state
@@ -149,11 +174,9 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       setSelectedSeats([]);
       // Reset booking form visibility
       setBookingModalVisible(false);
-      // Reset seat data
-      setSeatLayout(null);
-      setSeatStatuses([]);
+      // No need to manually reset seat data - React Query handles caching
     }
-  }, [visible, trip, bookingForm, fetchSeatData]); // Add fetchSeatData to dependencies
+  }, [visible, trip, bookingForm]); // Remove fetchSeatData from dependencies
 
   if (!trip) return null;
 
@@ -274,6 +297,9 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       setBookingModalVisible(false);
       setSelectedSeats([]);
       bookingForm.resetFields();
+
+      // Refetch seat statuses after successful booking
+      refetchSeatStatuses();
     } catch (error) {
       message.error("Không thể đặt vé. Vui lòng thử lại sau." + error);
     } finally {
@@ -472,6 +498,25 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
                         Đang tải thông tin ghế...
                       </div>
                     </div>
+                  ) : seatLayoutError || seatStatusError ? (
+                    <div style={{ textAlign: "center", padding: "20px" }}>
+                      <Alert
+                        message="Lỗi tải dữ liệu ghế"
+                        description="Không thể tải thông tin ghế. Vui lòng thử lại."
+                        type="error"
+                        showIcon
+                        action={
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              refetchSeatStatuses();
+                            }}
+                          >
+                            Thử lại
+                          </Button>
+                        }
+                      />
+                    </div>
                   ) : (
                     <TripSeatSelector
                       key={`seat-selector-${trip?.trip_id}`}
@@ -479,7 +524,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
                       onSeatSelect={handleSeatSelect}
                       availableSeats={trip?.available_seats || 0}
                       seatStatuses={seatStatuses}
-                      tripStatus={trip.status} // Add trip status prop
+                      tripStatus={trip.status}
                     />
                   )}
 

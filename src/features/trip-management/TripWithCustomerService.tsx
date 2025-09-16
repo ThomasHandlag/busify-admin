@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Card,
   Form,
@@ -16,7 +16,6 @@ import {
   Breadcrumb,
   Empty,
   Tooltip,
-  message,
   Select,
   DatePicker,
   TimePicker,
@@ -47,6 +46,7 @@ import {
   filterTrips,
   type TripFilterParams,
 } from "../../app/api/trip";
+import { useQuery } from "@tanstack/react-query";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -64,55 +64,43 @@ const PALETTE = {
 
 const TripWithCustomerServicePage: React.FC = () => {
   const [form] = Form.useForm();
-  const [searchResults, setSearchResults] = useState<Trip[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Load initial data on component mount
-  useEffect(() => {
-    loadAllTrips();
-  }, []);
-
-  const loadAllTrips = async () => {
-    try {
-      setInitialLoading(true);
-      setError(null);
+  // Use React Query to fetch all trips
+  const {
+    data: searchResults = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["trips"],
+    queryFn: async () => {
       const response = await getAllTrips();
       if (response.code === 200) {
-        setSearchResults(response.result);
+        return response.result;
       } else {
-        setError(response.message || "Không thể tải dữ liệu");
-        message.error(response.message || "Không thể tải dữ liệu");
+        throw new Error(response.message || "Không thể tải dữ liệu");
       }
-    } catch (error) {
-      setError("Lỗi kết nối đến server");
-      message.error("Lỗi kết nối đến server");
-      console.error("Error loading trips:", error);
-    } finally {
-      setInitialLoading(false);
-    }
-  };
+    },
+  });
 
-  const handleSearch = async (values: any) => {
-    const {
-      startLocation,
-      endLocation,
-      departureDate,
-      departureTime,
-      status,
-      minSeats,
-    } = values;
+  // Use React Query to filter trips
+  const filterQuery = useQuery({
+    queryKey: ["filteredTrips"],
+    queryFn: async () => {
+      const values = form.getFieldsValue();
+      const {
+        startLocation,
+        endLocation,
+        departureDate,
+        departureTime,
+        status,
+        minSeats,
+      } = values;
 
-    setLoading(true);
-    setHasSearched(true);
-    setError(null);
-
-    try {
-      // Prepare filter params
       const filterParams: TripFilterParams = {};
 
       if (departureDate) {
@@ -151,31 +139,23 @@ const TripWithCustomerServicePage: React.FC = () => {
           results = results.filter((trip) => trip.status === status);
         }
 
-        setSearchResults(results);
-
-        if (results.length === 0) {
-          message.info("Không tìm thấy chuyến đi phù hợp");
-        } else {
-          message.success(`Tìm thấy ${results.length} chuyến đi`);
-        }
+        return results;
       } else {
-        setError(response.message || "Không thể tìm kiếm chuyến đi");
-        message.error(response.message || "Không thể tìm kiếm chuyến đi");
+        throw new Error(response.message || "Không thể tìm kiếm chuyến đi");
       }
-    } catch (error) {
-      setError("Lỗi kết nối đến server");
-      message.error("Lỗi kết nối đến server");
-      console.error("Error searching trips:", error);
-    } finally {
-      setLoading(false);
-    }
+    },
+    enabled: false, // Disable initial fetch
+  });
+
+  const handleSearch = async () => {
+    setHasSearched(true);
+    filterQuery.refetch();
   };
 
   const handleReset = () => {
     form.resetFields();
     setHasSearched(false);
-    setError(null);
-    loadAllTrips();
+    refetch(); // Reload all trips
   };
 
   const handleViewDetail = (trip: Trip) => {
@@ -405,17 +385,17 @@ const TripWithCustomerServicePage: React.FC = () => {
       </Title>
 
       {/* Error Alert */}
-      {error && (
+      {isError && (
         <Alert
           message="Lỗi"
-          description={error}
+          description={error?.message}
           type="error"
           showIcon
           closable
-          onClose={() => setError(null)}
+          onClose={() => {}}
           style={{ marginBottom: "24px" }}
           action={
-            <Button size="small" onClick={loadAllTrips}>
+            <Button size="small" onClick={() => refetch()}>
               Thử lại
             </Button>
           }
@@ -495,7 +475,7 @@ const TripWithCustomerServicePage: React.FC = () => {
                     type="primary"
                     htmlType="submit"
                     icon={<SearchOutlined />}
-                    loading={loading}
+                    loading={isLoading}
                   >
                     Tìm kiếm
                   </Button>
@@ -518,7 +498,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               value={stats.total}
               prefix={<CarOutlined />}
               valueStyle={{ color: PALETTE.primary }}
-              loading={initialLoading}
+              loading={isLoading}
             />
           </Card>
         </Col>
@@ -528,7 +508,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               title="Đang bán vé"
               value={stats.onSell}
               valueStyle={{ color: PALETTE.success }}
-              loading={initialLoading}
+              loading={isLoading}
             />
           </Card>
         </Col>
@@ -538,7 +518,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               title="Đã lên lịch"
               value={stats.scheduled}
               valueStyle={{ color: PALETTE.muted }}
-              loading={initialLoading}
+              loading={isLoading}
             />
           </Card>
         </Col>
@@ -548,7 +528,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               title="Đã hủy"
               value={stats.cancelled}
               valueStyle={{ color: PALETTE.danger }}
-              loading={initialLoading}
+              loading={isLoading}
             />
           </Card>
         </Col>
@@ -556,11 +536,11 @@ const TripWithCustomerServicePage: React.FC = () => {
 
       {/* Search Results Table */}
       <Card>
-        {searchResults.length === 0 && !initialLoading && !loading ? (
+        {searchResults.length === 0 && !isLoading ? (
           <Empty description="Không có chuyến đi nào" />
         ) : (
           <>
-            {hasSearched && !loading && (
+            {hasSearched && !isLoading && (
               <Alert
                 message={`Tìm thấy ${searchResults.length} chuyến đi phù hợp`}
                 type="success"
@@ -568,7 +548,7 @@ const TripWithCustomerServicePage: React.FC = () => {
                 style={{ marginBottom: "16px" }}
               />
             )}
-            {!hasSearched && !initialLoading && (
+            {!hasSearched && !isLoading && (
               <Alert
                 message={`Hiển thị tất cả ${searchResults.length} chuyến đi trong hệ thống`}
                 type="info"
@@ -580,7 +560,7 @@ const TripWithCustomerServicePage: React.FC = () => {
               columns={columns}
               dataSource={searchResults}
               rowKey="trip_id"
-              loading={loading || initialLoading}
+              loading={isLoading}
               scroll={{ x: 1400 }}
               pagination={{
                 pageSize: 10,
