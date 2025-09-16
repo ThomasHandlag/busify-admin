@@ -1,111 +1,107 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from "react";
-import { Col, Row, message, Spin, Button, Form } from "antd"; // Thêm Form
+import { Col, Row, message, Spin, Button, Form } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MetricsCard } from "../components/MetricsCard";
 import { TicketsList } from "../components/TicketsList";
 import { DashboardSidebar } from "../components/DashboardSidebar";
 import {
   getComplaintByAgent,
   type ComplaintDetail,
-  updateComplaintStatus, // Giả định API này tồn tại để cập nhật trạng thái
+  updateComplaintStatus,
   getComplaintStatsForCurrentAgent,
   getDailyComplaintStatsForCurrentAgent,
-  type ComplaintStats,
-  type DailyComplaintStats,
 } from "../../../app/api/complaint";
 import { DashboardHeader } from "../components/DashboardHeader";
 import ComplaintDetailModal from "../../complaints-management/components/ComplaintDetailModal";
-import MailSenderModal from "../../../components/MailSenderModal"; // Thêm import
+import MailSenderModal from "../../../components/MailSenderModal";
 import type { ChatSession } from "../../../app/api/chat";
-import { fetchRecentChatSessions } from "../../../app/api/chat"; // Thêm import
+import { fetchRecentChatSessions } from "../../../app/api/chat";
 import { useWebSocket } from "../../../app/provider/WebSocketContext";
 import type { ChatNotification } from "../../../app/service/WebSocketService";
 
 export const DashboardWithCustomerService = () => {
+  const queryClient = useQueryClient();
+
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchText, setSearchText] = useState<string>("");
-
-  const [complaints, setComplaints] = useState<ComplaintDetail[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [selectedComplaint, setSelectedComplaint] =
     useState<ComplaintDetail | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  // Thêm state cho modal gửi email
   const [isMailModalVisible, setIsMailModalVisible] = useState(false);
   const [selectedTicketForEmail, setSelectedTicketForEmail] =
     useState<ComplaintDetail | null>(null);
-  const [mailForm] = Form.useForm(); // Form instance cho modal
+  const [mailForm] = Form.useForm();
 
-  // State cho thống kê
-  const [stats, setStats] = useState<ComplaintStats | null>(null);
-  const [dailyStats, setDailyStats] = useState<DailyComplaintStats | null>(
-    null
-  );
-
-  // Thêm state cho chat sessions
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const [chatLoading, setChatLoading] = useState<boolean>(true);
-  const [chatError, setChatError] = useState<string | null>(null);
-
-  // Thêm WebSocket hook
-  const { addNotificationHandler, removeNotificationHandler } = useWebSocket();
-
-  const fetchComplaints = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  // --- Tích hợp React Query cho Khiếu nại ---
+  const {
+    data: complaints = [],
+    isLoading: isLoadingComplaints,
+    isError: isErrorComplaints,
+    error: errorComplaints,
+  } = useQuery<ComplaintDetail[], Error>({
+    queryKey: ["complaints", "agent"],
+    queryFn: async () => {
       const response = await getComplaintByAgent();
-
-      if (response.code === 200) {
-        setComplaints(response.result);
-      } else {
-        const errorMessage =
-          response.message || "Không thể tải danh sách khiếu nại.";
-        setError(errorMessage);
-        message.error(errorMessage);
+      if (response.code !== 200) {
+        throw new Error(
+          response.message || "Không thể tải danh sách khiếu nại."
+        );
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.message || "Đã xảy ra lỗi không mong muốn khi tải dữ liệu.";
-      setError(errorMessage);
-      message.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return response.result;
+    },
+  });
 
-  const fetchStats = useCallback(async () => {
-    try {
+  const { data: statsData } = useQuery({
+    queryKey: ["complaintStats", "agent"],
+    queryFn: async () => {
       const [statsResponse, dailyStatsResponse] = await Promise.all([
         getComplaintStatsForCurrentAgent(),
         getDailyComplaintStatsForCurrentAgent(),
       ]);
-
-      if (statsResponse.code === 200) {
-        setStats(statsResponse.result);
-      } else {
-        message.error(
-          statsResponse.message || "Không thể tải thống kê toàn thời gian."
-        );
+      if (statsResponse.code !== 200 || dailyStatsResponse.code !== 200) {
+        console.error("Failed to fetch stats");
+        return { stats: null, dailyStats: null };
       }
+      return {
+        stats: statsResponse.result,
+        dailyStats: dailyStatsResponse.result,
+      };
+    },
+  });
 
-      if (dailyStatsResponse.code === 200) {
-        setDailyStats(dailyStatsResponse.result);
-      } else {
-        message.error(
-          dailyStatsResponse.message || "Không thể tải thống kê trong ngày."
-        );
-      }
-    } catch (err) {
-      message.error("Lỗi khi tải dữ liệu thống kê." + err);
-    }
-  }, []);
+  const { stats, dailyStats } = statsData || {
+    stats: null,
+    dailyStats: null,
+  };
 
-  // Hàm fetch chat sessions
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ ticketId, status }: { ticketId: number; status: string }) =>
+      updateComplaintStatus(ticketId, status),
+    onSuccess: (_, variables) => {
+      message.success(
+        `Trạng thái khiếu nại #${variables.ticketId} đã được cập nhật.`
+      );
+      queryClient.invalidateQueries({ queryKey: ["complaints", "agent"] });
+      queryClient.invalidateQueries({ queryKey: ["complaintStats", "agent"] });
+    },
+    onError: (error: Error, variables) => {
+      message.error(
+        `Lỗi khi cập nhật khiếu nại #${variables.ticketId}: ${error.message}`
+      );
+    },
+  });
+  // --- Kết thúc tích hợp React Query ---
+
+  // State và logic cho Chat vẫn giữ nguyên
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [chatLoading, setChatLoading] = useState<boolean>(true);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const { addNotificationHandler, removeNotificationHandler } = useWebSocket();
+
   const fetchChatSessions = useCallback(async () => {
     setChatLoading(true);
     setChatError(null);
@@ -122,12 +118,8 @@ export const DashboardWithCustomerService = () => {
     }
   }, []);
 
-  // Notification handler function for chat updates
   const handleChatNotification = useCallback(
     (notification: ChatNotification) => {
-      console.log("Dashboard received chat notification:", notification);
-
-      // Update chat sessions with notification info
       setChatSessions((prev) =>
         prev.map((chat) =>
           chat.id === notification.roomId
@@ -135,7 +127,7 @@ export const DashboardWithCustomerService = () => {
                 ...chat,
                 lastMessage: notification.contentPreview,
                 lastMessageTime: notification.timestamp,
-                unreadCount: (chat.unreadCount || 0) + 1, // Increment unread count
+                unreadCount: (chat.unreadCount || 0) + 1,
               }
             : chat
         )
@@ -145,17 +137,11 @@ export const DashboardWithCustomerService = () => {
   );
 
   useEffect(() => {
-    fetchComplaints();
-    fetchChatSessions(); // Gọi fetch chat sessions
-    fetchStats();
-  }, [fetchComplaints, fetchChatSessions, fetchStats]);
+    fetchChatSessions();
+  }, [fetchChatSessions]);
 
-  // Set up notification handler for chat updates
   useEffect(() => {
-    // Add notification handler
     addNotificationHandler(handleChatNotification);
-
-    // Clean up when component unmounts
     return () => {
       removeNotificationHandler(handleChatNotification);
     };
@@ -178,7 +164,6 @@ export const DashboardWithCustomerService = () => {
     return matchesStatus && matchesSearch;
   });
 
-  // Cập nhật đối tượng metrics để loại bỏ overdue
   const metrics = {
     new: dailyStats?.inProgressCount ?? 0,
     pending: stats?.pending ?? 0,
@@ -186,9 +171,8 @@ export const DashboardWithCustomerService = () => {
     resolved: stats?.resolved ?? 0,
     rejected: stats?.rejected ?? 0,
     resolvedToday: dailyStats?.resolvedCount ?? 0,
-    // Loại bỏ overdue
-    avgResponseTime: "2.5", // Giữ giá trị giả định
-    customerSatisfaction: 4.2, // Giữ giá trị giả định
+    avgResponseTime: "2.5",
+    customerSatisfaction: 4.2,
   };
 
   const handleTicketAction = (
@@ -196,51 +180,27 @@ export const DashboardWithCustomerService = () => {
     ticketId: number,
     extra?: any
   ) => {
+    const complaint = complaints.find((c) => c.id === ticketId);
+    if (!complaint) {
+      message.error("Không tìm thấy khiếu nại");
+      return;
+    }
+
     if (action === "View") {
-      const complaint = complaints.find((c) => c.id === ticketId);
-      if (complaint) {
-        setSelectedComplaint(complaint);
-        setIsModalVisible(true);
-      } else {
-        message.error("Không tìm thấy khiếu nại");
-      }
+      setSelectedComplaint(complaint);
+      setIsModalVisible(true);
     } else if (action === "SendEmail") {
-      const complaint = complaints.find((c) => c.id === ticketId);
-      if (complaint) {
-        setSelectedTicketForEmail(complaint);
-        setIsMailModalVisible(true);
-      } else {
-        message.error("Không tìm thấy khiếu nại");
-      }
+      setSelectedTicketForEmail(complaint);
+      setIsMailModalVisible(true);
     } else if (action === "ChangeStatus") {
-      // Cập nhật trạng thái local trước để phản hồi nhanh
-      setComplaints((prev) =>
-        prev.map((c) => (c.id === ticketId ? { ...c, status: extra } : c))
-      );
-      // Gọi API để cập nhật trạng thái
-      updateComplaintStatus(ticketId, extra)
-        .then(() => {
-          message.success(
-            `Trạng thái khiếu nại ${ticketId} đã được cập nhật thành ${extra}`
-          );
-          // Reload dữ liệu sau khi cập nhật thành công
-          fetchComplaints();
-          fetchStats();
-        })
-        .catch((error) => {
-          message.error("Lỗi khi cập nhật trạng thái: " + error.message);
-          // Nếu lỗi, có thể revert local state hoặc reload để đồng bộ
-          fetchComplaints();
-          fetchStats();
-        });
+      updateStatusMutation.mutate({ ticketId, status: extra });
     } else {
       message.success(`${action} ticket ${ticketId}`);
     }
   };
 
-  // Hàm xử lý khi gửi email thành công
   const handleEmailSuccess = () => {
-    fetchComplaints(); // Refresh danh sách khiếu nại
+    queryClient.invalidateQueries({ queryKey: ["complaints", "agent"] });
   };
 
   const handleModalClose = () => {
@@ -249,8 +209,10 @@ export const DashboardWithCustomerService = () => {
   };
 
   const handleRefresh = () => {
-    fetchComplaints();
-    fetchStats();
+    message.loading("Đang làm mới...", 0.5);
+    queryClient.invalidateQueries({ queryKey: ["complaints", "agent"] });
+    queryClient.invalidateQueries({ queryKey: ["complaintStats", "agent"] });
+    fetchChatSessions(); // Chat chưa dùng react-query nên gọi thủ công
   };
 
   const containerStyle: React.CSSProperties = {
@@ -273,14 +235,14 @@ export const DashboardWithCustomerService = () => {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
-          {loading ? (
+          {isLoadingComplaints ? (
             <div style={{ textAlign: "center", padding: "40px 20px" }}>
               <Spin size="large" />
               <p style={{ marginTop: 16, color: "#999" }}>
                 Đang tải yêu cầu...
               </p>
             </div>
-          ) : error ? (
+          ) : isErrorComplaints ? (
             <div
               style={{
                 textAlign: "center",
@@ -291,8 +253,15 @@ export const DashboardWithCustomerService = () => {
               <ExclamationCircleOutlined
                 style={{ fontSize: 24, marginBottom: 8 }}
               />
-              <div>Lỗi: {error}</div>
-              <Button onClick={fetchComplaints} style={{ marginTop: 16 }}>
+              <div>Lỗi: {errorComplaints.message}</div>
+              <Button
+                onClick={() =>
+                  queryClient.refetchQueries({
+                    queryKey: ["complaints", "agent"],
+                  })
+                }
+                style={{ marginTop: 16 }}
+              >
                 Thử lại
               </Button>
             </div>
@@ -320,18 +289,17 @@ export const DashboardWithCustomerService = () => {
         onClose={handleModalClose}
       />
 
-      {/* Thêm MailSenderModal */}
       <MailSenderModal
         isVisible={isMailModalVisible}
         setIsVisible={setIsMailModalVisible}
         form={mailForm}
-        defaultRecipient={selectedTicketForEmail?.customer?.customerEmail || ""} // Giả định customer có email
+        defaultRecipient={selectedTicketForEmail?.customer?.customerEmail || ""}
         defaultSubject={`Phản hồi khiếu nại #${
           selectedTicketForEmail?.id || ""
         }`}
         defaultUserName={selectedTicketForEmail?.customer?.customerName || ""}
         caseNumber={selectedTicketForEmail?.id?.toString() || ""}
-        csRepName="Admin" // Có thể lấy từ user hiện tại
+        csRepName="Admin"
         onSuccess={handleEmailSuccess}
       />
     </div>
