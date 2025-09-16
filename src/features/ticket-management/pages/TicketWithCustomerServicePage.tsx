@@ -27,7 +27,7 @@ import {
   ClearOutlined,
   FileSearchOutlined,
 } from "@ant-design/icons";
-import type { TableProps } from "antd";
+import type { TableProps, TablePaginationConfig } from "antd";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // Thêm import này
 import TicketDetailModal from "../components/TicketDetailModal";
 import {
@@ -46,6 +46,14 @@ const TicketWithCustomerServicePage: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const queryClient = useQueryClient(); // Để invalidate queries
 
+  const [pagination, setPagination] = useState<{
+    current: number;
+    pageSize: number;
+  }>({
+    current: 1,
+    pageSize: 10,
+  });
+
   // Query để load tất cả vé (thay thế useEffect và useState cho searchResults/loading)
   const {
     data: ticketsData,
@@ -53,30 +61,43 @@ const TicketWithCustomerServicePage: React.FC = () => {
     isError: isErrorTickets,
     error: errorTickets,
   } = useQuery({
-    queryKey: ["tickets"], // Key để cache và invalidate
+    queryKey: ["tickets", pagination.current, pagination.pageSize], // Key để cache và invalidate
     queryFn: async () => {
-      const response = await getAllTickets();
-      if (response.result && response.result.length > 0) {
-        return response.result.flatMap((item) => item.tickets); // Trả về mảng Ticket[]
+      const response = await getAllTickets(
+        pagination.current - 1,
+        pagination.pageSize
+      );
+      if (response.result && response.result.content) {
+        return {
+          tickets: response.result.content.flatMap((item) => item.tickets), // Trả về mảng Ticket[]
+          total: response.result.totalElements,
+        };
       }
-      return [];
+      return { tickets: [], total: 0 };
     },
     staleTime: 5 * 60 * 1000, // Cache 5 phút (tùy chỉnh)
   });
 
   // Mutation cho tìm kiếm (có thể dùng useQuery với key động thay thế nếu muốn đơn giản hơn)
   const searchMutation = useMutation({
-    mutationFn: (params: TicketSearchParams) => searchTickets(params),
+    mutationFn: (params: TicketSearchParams) =>
+      searchTickets({
+        ...params,
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      }),
     onSuccess: (response) => {
-      if (response.result && response.result.length > 0) {
-        const tickets = response.result.flatMap((item) => item.tickets);
+      if (response.result && response.result.content) {
+        const tickets = response.result.content.flatMap((item) => item.tickets);
+        const total = response.result.totalElements;
         queryClient.setQueryData(["tickets"], tickets); // Cập nhật cache
-        message.success(`Tìm thấy ${tickets.length} kết quả`);
+        message.success(`Tìm thấy ${total} kết quả`);
+        return { tickets, total };
       } else {
         queryClient.setQueryData(["tickets"], []);
         message.info("Không tìm thấy thông tin vé phù hợp");
+        return { tickets: [], total: 0 };
       }
-      setHasSearched(true);
     },
     onError: (error) => {
       message.error("Lỗi khi tìm kiếm vé: " + error.message);
@@ -91,6 +112,7 @@ const TicketWithCustomerServicePage: React.FC = () => {
       return;
     }
     setHasSearched(true);
+    setPagination({ ...pagination, current: 1 }); // Reset page to 1 on search
     searchMutation.mutate(values); // Gọi mutation
   };
 
@@ -209,12 +231,21 @@ const TicketWithCustomerServicePage: React.FC = () => {
   ];
 
   // Tính stats dựa trên dữ liệu từ query
-  const searchResults = ticketsData || [];
+  const searchResults = ticketsData?.tickets || [];
+  const total = ticketsData?.total || 0;
+
   const stats = {
-    total: searchResults.length,
+    total: total,
     valid: searchResults.filter((t) => t.status === "valid").length,
     used: searchResults.filter((t) => t.status === "used").length,
     cancelled: searchResults.filter((t) => t.status === "cancelled").length,
+  };
+
+  const handleTableChange = (newPagination: TablePaginationConfig) => {
+    setPagination({
+      current: newPagination.current || 1,
+      pageSize: newPagination.pageSize || 10,
+    });
   };
 
   return (
@@ -349,7 +380,7 @@ const TicketWithCustomerServicePage: React.FC = () => {
           <>
             {hasSearched && (
               <Alert
-                message={`Tìm thấy ${searchResults.length} kết quả phù hợp`}
+                message={`Tìm thấy ${total} kết quả phù hợp`}
                 type="success"
                 showIcon
                 style={{ marginBottom: "16px" }}
@@ -357,7 +388,7 @@ const TicketWithCustomerServicePage: React.FC = () => {
             )}
             {!hasSearched && (
               <Alert
-                message={`Hiển thị tất cả ${searchResults.length} vé trong hệ thống`}
+                message={`Hiển thị tất cả ${total} vé trong hệ thống`}
                 type="info"
                 showIcon
                 style={{ marginBottom: "16px" }}
@@ -369,12 +400,15 @@ const TicketWithCustomerServicePage: React.FC = () => {
               rowKey="ticketId"
               loading={isLoadingTickets || searchMutation.isPending} // Loading từ query/mutation
               pagination={{
-                pageSize: 10,
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: total,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) =>
                   `${range[0]}-${range[1]} của ${total} vé`,
               }}
+              onChange={handleTableChange}
             />
           </>
         )}
