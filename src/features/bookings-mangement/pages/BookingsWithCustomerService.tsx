@@ -145,6 +145,8 @@ const BookingsWithCustomerService: React.FC = () => {
     setSearchParams(newSearchParams);
   };
 
+  // New handler for pagination change outside of table
+
   const handleViewDetail = (booking: Booking) => {
     setSelectedBooking(booking);
     setIsModalVisible(true);
@@ -359,19 +361,22 @@ const BookingsWithCustomerService: React.FC = () => {
     },
   ];
 
-  // Get data from React Query result
-  const searchResults = bookingsData?.result || [];
+  // Get data from React Query result - updated to handle new response structure
+  const bookingItems = bookingsData?.result || [];
   const pagination = {
     current: bookingsData?.pageNumber || 1,
     pageSize: bookingsData?.pageSize || 10,
     total: bookingsData?.totalRecords || 0,
+    hasNext: bookingsData?.hasNext || false,
+    hasPrevious: bookingsData?.hasPrevious || false,
   };
 
+  // Stats should be calculated only from current page data
   const stats = {
-    total: searchResults.length,
-    confirmed: searchResults.filter((b) => b.status === "confirmed").length,
-    pending: searchResults.filter((b) => b.status === "pending").length,
-    totalRevenue: searchResults.reduce(
+    total: bookingItems.length,
+    confirmed: bookingItems.filter((b) => b.status === "confirmed").length,
+    pending: bookingItems.filter((b) => b.status === "pending").length,
+    totalRevenue: bookingItems.reduce(
       (sum, booking) => sum + booking.total_amount,
       0
     ),
@@ -554,7 +559,7 @@ const BookingsWithCustomerService: React.FC = () => {
 
       {/* Results Table */}
       <Card>
-        {searchResults.length === 0 && !isLoading ? (
+        {bookingItems.length === 0 && !isLoading ? (
           <Empty description="Không có đặt vé nào" />
         ) : (
           <>
@@ -566,9 +571,11 @@ const BookingsWithCustomerService: React.FC = () => {
                 style={{ marginBottom: "16px" }}
               />
             )}
-            {!hasSearched && (
+            {!hasSearched && pagination.total > 0 && (
               <Alert
-                message={`Hiển thị tất cả ${pagination.total} đặt vé trong hệ thống`}
+                message={`Hiển thị trang ${pagination.current}/${
+                  Math.ceil(pagination.total / pagination.pageSize) || 1
+                } (${bookingItems.length}/${pagination.total} đặt vé)`}
                 type="info"
                 showIcon
                 style={{ marginBottom: "16px" }}
@@ -576,7 +583,7 @@ const BookingsWithCustomerService: React.FC = () => {
             )}
             <Table
               columns={columns}
-              dataSource={searchResults}
+              dataSource={bookingItems}
               rowKey="booking_id"
               loading={isLoading}
               scroll={{ x: 1400 }}

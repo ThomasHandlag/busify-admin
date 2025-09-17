@@ -45,6 +45,7 @@ import {
   type Review,
   type ReviewFilterParams,
   type ReviewSearchParams,
+  type ReviewResponse,
 } from "../../../app/api/review";
 
 const { Title, Text } = Typography;
@@ -60,6 +61,11 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("filter");
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   // Truy vấn để tải tất cả các đánh giá
   const {
@@ -68,13 +74,28 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
     isError: isErrorReviews,
     error: errorReviews,
   } = useQuery({
-    queryKey: ["reviews"],
-    queryFn: async () => {
-      const response = await getAllReviews();
+    queryKey: ["reviews", pagination.current, pagination.pageSize],
+    queryFn: async (): Promise<ReviewResponse["result"]> => {
+      const response = await getAllReviews({
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      });
       if (response.code === 200) {
-        return response.result.reviews;
+        setPagination((prev) => ({
+          ...prev,
+          total: response.result.totalElements,
+        }));
+        return response.result;
       }
-      return [];
+      return {
+        reviews: [],
+        currentPage: 0,
+        totalPages: 0,
+        totalElements: 0,
+        pageSize: 10,
+        hasNext: false,
+        hasPrevious: false,
+      };
     },
     staleTime: 5 * 60 * 1000, // Cache 5 phút
   });
@@ -106,12 +127,16 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
         filterParams.endDate = endDate.format("YYYY-MM-DD");
       }
 
-      const response = await filterReviews(filterParams);
-      let results = response.result.reviews;
+      const response = await filterReviews({
+        ...filterParams,
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      });
+      const results = response.result;
 
       // Lọc theo tên khách hàng ở phía client (nếu có)
       if (customerName) {
-        results = results.filter((review) =>
+        results.reviews = results.reviews.filter((review) =>
           review.customerName.toLowerCase().includes(customerName.toLowerCase())
         );
       }
@@ -120,12 +145,17 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
     },
     onSuccess: (data) => {
       // Cập nhật cache với kết quả lọc
-      queryClient.setQueryData(["reviews", "filtered"], data);
+      queryClient.setQueryData(["reviews", "filtered"], data.reviews);
+      setPagination((prev) => ({
+        ...prev,
+        total: data.totalElements,
+        current: data.currentPage + 1,
+      }));
 
-      if (data.length === 0) {
+      if (data.reviews.length === 0) {
         message.info("Không tìm thấy đánh giá phù hợp");
       } else {
-        message.success(`Tìm thấy ${data.length} đánh giá`);
+        message.success(`Tìm thấy ${data.totalElements} đánh giá`);
       }
 
       setHasSearched(true);
@@ -155,17 +185,26 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
         searchParams.comment = comment;
       }
 
-      const response = await searchReviews(searchParams);
-      return response.result.reviews;
+      const response = await searchReviews({
+        ...searchParams,
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      });
+      return response.result;
     },
     onSuccess: (data) => {
       // Cập nhật cache với kết quả tìm kiếm
-      queryClient.setQueryData(["reviews", "filtered"], data);
+      queryClient.setQueryData(["reviews", "filtered"], data.reviews);
+      setPagination((prev) => ({
+        ...prev,
+        total: data.totalElements,
+        current: data.currentPage + 1,
+      }));
 
-      if (data.length === 0) {
+      if (data.reviews.length === 0) {
         message.info("Không tìm thấy đánh giá phù hợp với từ khóa tìm kiếm");
       } else {
-        message.success(`Tìm thấy ${data.length} đánh giá phù hợp`);
+        message.success(`Tìm thấy ${data.totalElements} đánh giá phù hợp`);
       }
 
       setHasSearched(true);
@@ -181,10 +220,12 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
   });
 
   const handleFilter = (values: any) => {
+    setPagination((prev) => ({ ...prev, current: 1 }));
     filterMutation.mutate(values);
   };
 
   const handleSearch = (values: any) => {
+    setPagination((prev) => ({ ...prev, current: 1 }));
     searchMutation.mutate(values);
   };
 
@@ -192,11 +233,15 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
     form.resetFields();
     searchForm.resetFields();
     setHasSearched(false);
+    setPagination({ current: 1, pageSize: 10, total: 0 });
     queryClient.removeQueries({ queryKey: ["reviews", "filtered"] });
+    queryClient.invalidateQueries({ queryKey: ["reviews"] });
   };
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["reviews"] });
+    queryClient.invalidateQueries({
+      queryKey: ["reviews", pagination.current, pagination.pageSize],
+    });
     if (hasSearched) {
       // Nếu đã tìm kiếm trước đó, thực hiện lại hành động tìm kiếm hoặc lọc
       if (activeTab === "search") {
@@ -313,7 +358,7 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
   // Quyết định dữ liệu nào hiển thị dựa trên trạng thái tìm kiếm
   const displayReviews = hasSearched
     ? queryClient.getQueryData<Review[]>(["reviews", "filtered"]) || []
-    : reviewsData || [];
+    : reviewsData?.reviews || [];
 
   // Tính toán thống kê dựa trên dữ liệu hiển thị hiện tại
   const stats = {
@@ -334,6 +379,21 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
   // Trạng thái loading tổng hợp
   const isLoading =
     isLoadingReviews || filterMutation.isPending || searchMutation.isPending;
+
+  const handleTableChange = (newPagination: any) => {
+    setPagination({
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
+      total: newPagination.total,
+    });
+    if (hasSearched) {
+      if (activeTab === "search") {
+        searchMutation.mutate(searchForm.getFieldsValue());
+      } else {
+        filterMutation.mutate(form.getFieldsValue());
+      }
+    }
+  };
 
   return (
     <div style={{ padding: "24px" }}>
@@ -613,12 +673,17 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
               loading={isLoading}
               scroll={{ x: 1000 }}
               pagination={{
-                pageSize: 10,
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: hasSearched
+                  ? pagination.total
+                  : reviewsData?.totalElements,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) =>
                   `${range[0]}-${range[1]} của ${total} đánh giá`,
               }}
+              onChange={handleTableChange}
             />
           </>
         )}

@@ -33,7 +33,7 @@ export interface BookingDetail {
 export interface BookingResponse {
   code: number;
   message: string;
-  result: Booking[];
+  result: PaginatedBookingResult;
 }
 
 export interface BookingDetailResponse {
@@ -118,9 +118,14 @@ export interface SearchBookingResponse {
   result: PaginatedBookingResult;
 }
 
-export const getAllBookings = async (): Promise<BookingResponse> => {
+export const getAllBookings = async (
+  page: number = 1,
+  size: number = 10
+): Promise<BookingResponse> => {
   try {
-    const response = await apiClient.get("api/bookings/all");
+    const response = await apiClient.get(
+      `api/bookings/all?page=${page}&size=${size}`
+    );
     return response.data;
   } catch (error) {
     throw new Error("Không thể lấy danh sách đặt vé" + error);
