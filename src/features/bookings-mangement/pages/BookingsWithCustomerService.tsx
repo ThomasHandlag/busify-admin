@@ -31,6 +31,8 @@ import {
   EnvironmentOutlined,
   CreditCardOutlined,
   ReloadOutlined,
+  GlobalOutlined,
+  ShopOutlined,
 } from "@ant-design/icons";
 import type { TableProps } from "antd";
 import dayjs from "dayjs";
@@ -79,7 +81,14 @@ const BookingsWithCustomerService: React.FC = () => {
   // Search mutation
   const searchMutation = useMutation({
     mutationFn: async (values: any) => {
-      const { bookingCode, routeName, status, fromDate, toDate } = values;
+      const {
+        bookingCode,
+        routeName,
+        status,
+        fromDate,
+        toDate,
+        sellingMethod,
+      } = values;
 
       const newSearchParams: SearchBookingParams = {
         page: 1,
@@ -89,6 +98,7 @@ const BookingsWithCustomerService: React.FC = () => {
       if (bookingCode) newSearchParams.bookingCode = bookingCode;
       if (routeName) newSearchParams.route = routeName;
       if (status) newSearchParams.status = status;
+      if (sellingMethod) newSearchParams.sellingMethod = sellingMethod;
       if (fromDate)
         newSearchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
       if (toDate) newSearchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
@@ -128,7 +138,8 @@ const BookingsWithCustomerService: React.FC = () => {
 
   const handleTableChange = (pagination: any) => {
     const formValues = form.getFieldsValue();
-    const { bookingCode, routeName, status, fromDate, toDate } = formValues;
+    const { bookingCode, routeName, status, fromDate, toDate, sellingMethod } =
+      formValues;
 
     const newSearchParams: SearchBookingParams = {
       page: pagination.current,
@@ -138,6 +149,7 @@ const BookingsWithCustomerService: React.FC = () => {
     if (bookingCode) newSearchParams.bookingCode = bookingCode;
     if (routeName) newSearchParams.route = routeName;
     if (status) newSearchParams.status = status;
+    if (sellingMethod) newSearchParams.sellingMethod = sellingMethod;
     if (fromDate)
       newSearchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
     if (toDate) newSearchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
@@ -283,6 +295,18 @@ const BookingsWithCustomerService: React.FC = () => {
         </div>
       ),
       width: 150,
+    },
+    {
+      title: "Phương thức bán",
+      dataIndex: "selling_method",
+      key: "selling_method",
+      render: (method) => (
+        <Space>
+          {method === "ONLINE" ? <GlobalOutlined /> : <ShopOutlined />}
+          {method}
+        </Space>
+      ),
+      width: 120,
     },
     {
       title: "Số lượng vé",
@@ -470,6 +494,16 @@ const BookingsWithCustomerService: React.FC = () => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12} lg={6}>
+              <Form.Item name="sellingMethod" label="Phương thức bán">
+                <Select placeholder="Chọn phương thức bán" allowClear>
+                  <Option value="ONLINE">Online</Option>
+                  <Option value="OFFLINE">Offline</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col xs={24} sm={12} lg={6}>
               <Form.Item name="fromDate" label="Từ ngày">
                 <DatePicker
                   style={{ width: "100%" }}
@@ -478,8 +512,6 @@ const BookingsWithCustomerService: React.FC = () => {
                 />
               </Form.Item>
             </Col>
-          </Row>
-          <Row gutter={16}>
             <Col xs={24} sm={12} lg={6}>
               <Form.Item name="toDate" label="Đến ngày">
                 <DatePicker
@@ -489,7 +521,7 @@ const BookingsWithCustomerService: React.FC = () => {
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={18} lg={18}>
+            <Col xs={24} sm={12} lg={12}>
               <Form.Item label=" " style={{ marginBottom: 0 }}>
                 <Space>
                   <Button
