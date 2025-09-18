@@ -49,6 +49,21 @@ export interface ComplaintResponse {
   };
 }
 
+export interface ComplaintPageResponseDTO {
+  complaints: ComplaintDetail[];
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+export interface ComplaintPageResponse {
+  code: number;
+  message: string;
+  result: ComplaintPageResponseDTO;
+}
+
 export interface ComplaintDetailResponse {
   code: number;
   message: string;
@@ -96,9 +111,19 @@ export interface UpdateComplaintParams {
   assignedAgentId?: number;
 }
 
-export const getAllComplaints = async (): Promise<ComplaintResponse> => {
+export interface GetComplaintsParams {
+  page?: number;
+  size?: number;
+}
+
+export const getAllComplaints = async (
+  params: GetComplaintsParams = {}
+): Promise<ComplaintPageResponse> => {
   try {
-    const response = await apiClient.get("api/complaints");
+    const { page = 0, size = 10 } = params;
+    const response = await apiClient.get("api/complaints", {
+      params: { page, size },
+    });
     return response.data;
   } catch (error) {
     throw new Error("Không thể lấy danh sách khiếu nại" + error);
@@ -131,17 +156,33 @@ export const updateComplaint = async (
   }
 };
 
-export const getComplaintByAgent =
-  async (): Promise<ComplaintDetailListResponse> => {
-    try {
-      const response = await apiClient.get(`api/complaints/agent/in-progress`);
-      return response.data;
-    } catch (error) {
-      throw new Error(
-        "Không thể lấy danh sách khiếu nại theo nhân viên" + error
-      );
-    }
-  };
+export const getComplaintByAgent = async (
+  params: GetComplaintsParams = {}
+): Promise<ComplaintPageResponse> => {
+  try {
+    const { page = 0, size = 10 } = params;
+    const response = await apiClient.get(`api/complaints/agent`, {
+      params: { page, size },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error("Không thể lấy danh sách khiếu nại theo nhân viên" + error);
+  }
+};
+
+export const getInProgressComplaintsByAgent = async (
+  params: GetComplaintsParams = {}
+): Promise<ComplaintPageResponse> => {
+  try {
+    const { page = 0, size = 10 } = params;
+    const response = await apiClient.get(`api/complaints/agent/in-progress`, {
+      params: { page, size },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error("Không thể lấy danh sách khiếu nại đang xử lý" + error);
+  }
+};
 
 export const updateComplaintStatus = async (
   complaintId: number,

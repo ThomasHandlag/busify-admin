@@ -1,5 +1,14 @@
 import React from "react";
-import { Card, Typography, Avatar, Tag, Button, Space, Dropdown } from "antd";
+import {
+  Card,
+  Typography,
+  Avatar,
+  Tag,
+  Button,
+  Space,
+  Dropdown,
+  Pagination,
+} from "antd";
 import {
   PhoneOutlined,
   SearchOutlined,
@@ -13,13 +22,23 @@ import type { ComplaintDetail } from "../../../app/api/complaint";
 
 interface TicketsListProps {
   tickets: ComplaintDetail[];
+  currentPage: number;
+  totalElements: number;
+  pageSize: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTicketAction: (action: string, ticketId: number, extra?: any) => void; // Mở rộng để hỗ trợ extra (ví dụ: trạng thái mới)
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
 export const TicketsList: React.FC<TicketsListProps> = ({
   tickets,
+  currentPage,
+  totalElements,
+  pageSize,
   onTicketAction,
+  onPageChange,
+  onPageSizeChange,
 }) => {
   const ticketCardStyle: React.CSSProperties = {
     borderRadius: 10,
@@ -345,6 +364,48 @@ export const TicketsList: React.FC<TicketsListProps> = ({
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalElements > 0 && (
+        <div
+          style={{
+            padding: "16px 20px",
+            borderTop: "1px solid #f0f0f0",
+            background: "#fafafa",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography.Text style={{ fontSize: 13, color: "#8c8c8c" }}>
+            Hiển thị {currentPage * pageSize + 1} -{" "}
+            {Math.min((currentPage + 1) * pageSize, totalElements)} của{" "}
+            {totalElements} mục
+          </Typography.Text>
+
+          <Pagination
+            current={currentPage + 1} // Ant Design sử dụng 1-based indexing
+            pageSize={pageSize}
+            total={totalElements}
+            showSizeChanger
+            showQuickJumper
+            pageSizeOptions={["10", "20", "50", "100"]}
+            showTotal={(total, range) =>
+              `${range[0]}-${range[1]} của ${total} mục`
+            }
+            onChange={(page, size) => {
+              onPageChange(page - 1); // Chuyển về 0-based indexing
+              if (size !== pageSize) {
+                onPageSizeChange(size);
+              }
+            }}
+            onShowSizeChange={(_, size) => {
+              onPageSizeChange(size);
+            }}
+            style={{ marginLeft: 16 }}
+          />
+        </div>
+      )}
     </Card>
   );
 };

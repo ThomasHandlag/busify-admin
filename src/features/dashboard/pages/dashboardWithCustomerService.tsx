@@ -7,7 +7,7 @@ import { MetricsCard } from "../components/MetricsCard";
 import { TicketsList } from "../components/TicketsList";
 import { DashboardSidebar } from "../components/DashboardSidebar";
 import {
-  getComplaintByAgent,
+  getInProgressComplaintsByAgent,
   type ComplaintDetail,
   updateComplaintStatus,
   getComplaintStatsForCurrentAgent,
@@ -26,6 +26,8 @@ export const DashboardWithCustomerService = () => {
 
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchText, setSearchText] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   const [selectedComplaint, setSelectedComplaint] =
     useState<ComplaintDetail | null>(null);
@@ -38,14 +40,17 @@ export const DashboardWithCustomerService = () => {
 
   // --- Tích hợp React Query cho Khiếu nại ---
   const {
-    data: complaints = [],
+    data: complaintsData,
     isLoading: isLoadingComplaints,
     isError: isErrorComplaints,
     error: errorComplaints,
-  } = useQuery<ComplaintDetail[], Error>({
-    queryKey: ["complaints", "agent"],
+  } = useQuery({
+    queryKey: ["complaints", "agent", currentPage, pageSize],
     queryFn: async () => {
-      const response = await getComplaintByAgent();
+      const response = await getInProgressComplaintsByAgent({
+        page: currentPage,
+        size: pageSize,
+      });
       if (response.code !== 200) {
         throw new Error(
           response.message || "Không thể tải danh sách khiếu nại."
@@ -54,6 +59,9 @@ export const DashboardWithCustomerService = () => {
       return response.result;
     },
   });
+
+  const complaints = complaintsData?.complaints || [];
+  const totalElements = complaintsData?.totalElements || 0;
 
   const { data: statsData } = useQuery({
     queryKey: ["complaintStats", "agent"],
@@ -219,6 +227,15 @@ export const DashboardWithCustomerService = () => {
     queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(0); // Reset to first page
+  };
+
   const containerStyle: React.CSSProperties = {
     padding: 24,
     background: "#f4f6f8",
@@ -272,7 +289,12 @@ export const DashboardWithCustomerService = () => {
           ) : (
             <TicketsList
               tickets={filteredTickets}
+              currentPage={currentPage}
+              totalElements={totalElements}
+              pageSize={pageSize}
               onTicketAction={handleTicketAction}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
             />
           )}
         </Col>

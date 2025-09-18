@@ -39,7 +39,7 @@ import ComplaintDetailModal from "../components/ComplaintDetailModal";
 import {
   getAllComplaints,
   updateComplaintStatus,
-  type Complaint,
+  type ComplaintDetail,
 } from "../../../app/api/complaint";
 
 const { Title, Text } = Typography;
@@ -52,26 +52,43 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
   const [hasSearched, setHasSearched] = useState(false);
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(
-    null
-  );
+  const [selectedComplaint, setSelectedComplaint] =
+    useState<ComplaintDetail | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("search");
 
-  // Truy vấn để tải tất cả các khiếu nại
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Truy vấn để tải tất cả các khiếu nại với phân trang
   const {
-    data: complaintsData,
+    data: complaintsPageData,
     isLoading: isLoadingComplaints,
     isError: isErrorComplaints,
     error: errorComplaints,
   } = useQuery({
-    queryKey: ["complaints"],
+    queryKey: ["complaints", currentPage, pageSize],
     queryFn: async () => {
-      const response = await getAllComplaints();
+      const response = await getAllComplaints({
+        page: currentPage,
+        size: pageSize,
+      });
       if (response.code === 200) {
-        return response.result.complaints;
+        setTotalElements(response.result.totalElements);
+        setTotalPages(response.result.totalPages);
+        return response.result;
       }
-      return [];
+      return {
+        complaints: [],
+        currentPage: 0,
+        totalPages: 0,
+        totalElements: 0,
+        hasNext: false,
+        hasPrevious: false,
+      };
     },
     staleTime: 5 * 60 * 1000, // Cache 5 phút
   });
@@ -80,7 +97,7 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) =>
       updateComplaintStatus(id, status),
-    onSuccess: (response, variables) => {
+    onSuccess: (_response, variables) => {
       message.success(
         `Đã cập nhật trạng thái khiếu nại #${variables.id} thành công`
       );
@@ -108,15 +125,15 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
         throw new Error("Vui lòng nhập ít nhất một từ khóa để tìm kiếm");
       }
 
-      // Lọc dữ liệu từ cache thay vì gọi API
-      const allComplaints =
-        queryClient.getQueryData<Complaint[]>(["complaints"]) || [];
-      let results = allComplaints;
+      // For now, filter only current page data.
+      // In a real scenario, you'd want to send search params to the API
+      const currentComplaints = complaintsPageData?.complaints || [];
+      let results = currentComplaints;
 
       if (customerName) {
         results = results.filter((complaint) =>
-          complaint.customerName
-            .toLowerCase()
+          complaint.customer?.customerName
+            ?.toLowerCase()
             .includes(customerName.toLowerCase())
         );
       }
@@ -162,10 +179,10 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
     mutationFn: async (values: any) => {
       const { status, dateRange, customerName } = values;
 
-      // Lọc dữ liệu từ cache thay vì gọi API
-      const allComplaints =
-        queryClient.getQueryData<Complaint[]>(["complaints"]) || [];
-      let results = allComplaints;
+      // For now, filter only current page data.
+      // In a real scenario, you'd want to send filter params to the API
+      const currentComplaints = complaintsPageData?.complaints || [];
+      let results = currentComplaints;
 
       if (status) {
         results = results.filter((complaint) => complaint.status === status);
@@ -183,8 +200,8 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
 
       if (customerName) {
         results = results.filter((complaint) =>
-          complaint.customerName
-            .toLowerCase()
+          complaint.customer?.customerName
+            ?.toLowerCase()
             .includes(customerName.toLowerCase())
         );
       }
@@ -225,21 +242,42 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["complaints"] });
+    queryClient.invalidateQueries({
+      queryKey: ["complaints", currentPage, pageSize],
+    });
     if (hasSearched) {
-      // Nếu đã tìm kiếm trước đó, thực hiện lại hành động tìm kiếm hoặc lọc
-      if (activeTab === "search") {
-        searchMutation.mutate(searchForm.getFieldsValue());
-      } else {
-        filterMutation.mutate(form.getFieldsValue());
-      }
+      // Reset search state and go back to paginated view
+      setHasSearched(false);
+      queryClient.removeQueries({ queryKey: ["complaints", "filtered"] });
     }
     message.success("Đang làm mới dữ liệu...");
   };
 
-  const handleViewDetail = (complaint: Complaint) => {
+  const handleViewDetail = (complaint: ComplaintDetail) => {
     setSelectedComplaint(complaint);
     setIsModalVisible(true);
+  };
+
+  // Pagination handlers
+  const handlePageChange = (page: number, size?: number) => {
+    setCurrentPage(page - 1); // Ant Design uses 1-based indexing, backend uses 0-based
+    if (size && size !== pageSize) {
+      setPageSize(size);
+    }
+    // Reset search/filter when changing pages
+    if (hasSearched) {
+      setHasSearched(false);
+      queryClient.removeQueries({ queryKey: ["complaints", "filtered"] });
+    }
+  };
+
+  const handlePageSizeChange = (_current: number, size: number) => {
+    setPageSize(size);
+    setCurrentPage(0); // Reset to first page when changing page size
+    if (hasSearched) {
+      setHasSearched(false);
+      queryClient.removeQueries({ queryKey: ["complaints", "filtered"] });
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -276,7 +314,7 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
     }
   };
 
-  const columns: TableProps<Complaint>["columns"] = [
+  const columns: TableProps<ComplaintDetail>["columns"] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -316,12 +354,11 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
     },
     {
       title: "Khách hàng",
-      dataIndex: "customerName",
       key: "customerName",
-      render: (name) => (
+      render: (record: ComplaintDetail) => (
         <Space>
           <UserOutlined />
-          {name}
+          {record.customer?.customerName || "N/A"}
         </Space>
       ),
     },
@@ -368,18 +405,22 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
 
   // Quyết định dữ liệu nào hiển thị dựa trên trạng thái tìm kiếm
   const displayComplaints = hasSearched
-    ? queryClient.getQueryData<Complaint[]>(["complaints", "filtered"]) || []
-    : complaintsData || [];
+    ? queryClient.getQueryData<ComplaintDetail[]>(["complaints", "filtered"]) ||
+      []
+    : complaintsPageData?.complaints || [];
 
   // Tính toán thống kê dựa trên dữ liệu hiển thị hiện tại
   const stats = {
-    total: displayComplaints.length,
-    new: displayComplaints.filter((c) => c.status === "New").length,
-    pending: displayComplaints.filter((c) => c.status === "pending").length,
-    inProgress: displayComplaints.filter((c) => c.status === "in_progress")
+    total: hasSearched ? displayComplaints.length : totalElements,
+    new: displayComplaints.filter((c: any) => c.status === "New").length,
+    pending: displayComplaints.filter((c: any) => c.status === "pending")
       .length,
-    resolved: displayComplaints.filter((c) => c.status === "resolved").length,
-    rejected: displayComplaints.filter((c) => c.status === "rejected").length,
+    inProgress: displayComplaints.filter((c: any) => c.status === "in_progress")
+      .length,
+    resolved: displayComplaints.filter((c: any) => c.status === "resolved")
+      .length,
+    rejected: displayComplaints.filter((c: any) => c.status === "rejected")
+      .length,
   };
 
   // Trạng thái loading tổng hợp
@@ -647,7 +688,9 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
             )}
             {!hasSearched && (
               <Alert
-                message={`Hiển thị tất cả ${displayComplaints.length} khiếu nại trong hệ thống`}
+                message={`Hiển thị trang ${
+                  currentPage + 1
+                }/${totalPages} (${totalElements} khiếu nại trong hệ thống)`}
                 type="info"
                 showIcon
                 style={{ marginBottom: "16px" }}
@@ -659,13 +702,27 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
               rowKey="id"
               loading={isLoading}
               scroll={{ x: 1000 }}
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} của ${total} khiếu nại`,
-              }}
+              pagination={
+                hasSearched
+                  ? {
+                      pageSize: displayComplaints.length,
+                      hideOnSinglePage: true,
+                      showTotal: (total, range) =>
+                        `${range[0]}-${range[1]} của ${total} kết quả tìm kiếm`,
+                    }
+                  : {
+                      current: currentPage + 1, // Ant Design uses 1-based indexing
+                      pageSize: pageSize,
+                      total: totalElements,
+                      showSizeChanger: true,
+                      showQuickJumper: true,
+                      pageSizeOptions: ["10", "20", "50", "100"],
+                      onChange: handlePageChange,
+                      onShowSizeChange: handlePageSizeChange,
+                      showTotal: (total, range) =>
+                        `${range[0]}-${range[1]} của ${total} khiếu nại`,
+                    }
+              }
             />
           </>
         )}
