@@ -55,12 +55,17 @@ export const ChatItem: React.FC<ChatItemProps> = ({
               marginBottom: 4,
             }}
           >
-            <Typography.Text strong style={{ fontSize: 14, color: "#262626" }}>
-              {chat.customerName}
-            </Typography.Text>
+            <div>
+              <Typography.Text
+                strong
+                style={{ fontSize: 14, color: "#262626" }}
+              >
+                {chat.customerName}
+              </Typography.Text>
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {chat.unreadCount && chat.unreadCount > 0 && (
-                <Badge count={chat.unreadCount} size="small" />
+              {(chat.unreadCount ?? 0) > 0 && (
+                <Badge count={chat.unreadCount ?? 0} size="small" />
               )}
               <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                 {chat.lastMessageTime

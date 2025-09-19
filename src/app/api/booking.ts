@@ -13,6 +13,7 @@ export interface Booking {
   booking_date: string;
   ticket_count: number;
   payment_method: string;
+  selling_method?: "ONLINE" | "OFFLINE";
 }
 
 export interface BookingDetail {
@@ -33,7 +34,7 @@ export interface BookingDetail {
 export interface BookingResponse {
   code: number;
   message: string;
-  result: Booking[];
+  result: PaginatedBookingResult;
 }
 
 export interface BookingDetailResponse {
@@ -81,6 +82,7 @@ export interface BookingDetailAPI {
     method: string;
     timestamp: string;
   };
+  selling_method?: "ONLINE" | "OFFLINE";
 }
 
 export interface UpdateBookingParams {
@@ -98,6 +100,7 @@ export interface SearchBookingParams {
   arrivalDate?: string; // ISO date format YYYY-MM-DD
   startDate?: string; // ISO date format YYYY-MM-DD
   endDate?: string; // ISO date format YYYY-MM-DD
+  sellingMethod?: "ONLINE" | "OFFLINE";
   page?: number;
   size?: number;
 }
@@ -118,9 +121,14 @@ export interface SearchBookingResponse {
   result: PaginatedBookingResult;
 }
 
-export const getAllBookings = async (): Promise<BookingResponse> => {
+export const getAllBookings = async (
+  page: number = 1,
+  size: number = 10
+): Promise<BookingResponse> => {
   try {
-    const response = await apiClient.get("api/bookings/all");
+    const response = await apiClient.get(
+      `api/bookings/all?page=${page}&size=${size}`
+    );
     return response.data;
   } catch (error) {
     throw new Error("Không thể lấy danh sách đặt vé" + error);
@@ -170,6 +178,8 @@ export const searchBookings = async (
       queryParams.append("arrivalDate", params.arrivalDate);
     if (params.startDate) queryParams.append("startDate", params.startDate);
     if (params.endDate) queryParams.append("endDate", params.endDate);
+    if (params.sellingMethod)
+      queryParams.append("sellingMethod", params.sellingMethod);
 
     // Add pagination parameters with defaults
     queryParams.append("page", (params.page || 1).toString());

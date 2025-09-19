@@ -4,6 +4,7 @@ export interface Review {
   reviewId: number;
   rating: number;
   customerName: string;
+  customerEmail: string;
   comment: string;
   createdAt: string;
 }
@@ -13,6 +14,12 @@ export interface ReviewResponse {
   message: string;
   result: {
     reviews: Review[];
+    currentPage: number;
+    totalPages: number;
+    totalElements: number;
+    pageSize: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
   };
 }
 
@@ -29,9 +36,24 @@ export interface ReviewSearchParams {
   comment?: string;
 }
 
-export const getAllReviews = async (): Promise<ReviewResponse> => {
+export interface PaginationParams {
+  page?: number;
+  size?: number;
+}
+
+export const getAllReviews = async (
+  params: PaginationParams
+): Promise<ReviewResponse> => {
   try {
-    const response = await apiClient.get("api/reviews");
+    const searchParams = new URLSearchParams();
+    if (params.page !== undefined)
+      searchParams.append("page", params.page.toString());
+    if (params.size !== undefined)
+      searchParams.append("size", params.size.toString());
+
+    const response = await apiClient.get(
+      `api/reviews?${searchParams.toString()}`
+    );
     return response.data;
   } catch (error) {
     throw new Error("Không thể lấy danh sách đánh giá" + error);
@@ -39,7 +61,7 @@ export const getAllReviews = async (): Promise<ReviewResponse> => {
 };
 
 export const filterReviews = async (
-  params: ReviewFilterParams
+  params: ReviewFilterParams & PaginationParams
 ): Promise<ReviewResponse> => {
   try {
     const searchParams = new URLSearchParams();
@@ -50,6 +72,10 @@ export const filterReviews = async (
       searchParams.append("maxRating", params.maxRating.toString());
     if (params.startDate) searchParams.append("startDate", params.startDate);
     if (params.endDate) searchParams.append("endDate", params.endDate);
+    if (params.page !== undefined)
+      searchParams.append("page", params.page.toString());
+    if (params.size !== undefined)
+      searchParams.append("size", params.size.toString());
 
     const response = await apiClient.get(
       `api/reviews/filter?${searchParams.toString()}`
@@ -61,13 +87,17 @@ export const filterReviews = async (
 };
 
 export const searchReviews = async (
-  params: ReviewSearchParams
+  params: ReviewSearchParams & PaginationParams
 ): Promise<ReviewResponse> => {
   try {
     const searchParams = new URLSearchParams();
     if (params.customerName)
       searchParams.append("customerName", params.customerName);
     if (params.comment) searchParams.append("comment", params.comment);
+    if (params.page !== undefined)
+      searchParams.append("page", params.page.toString());
+    if (params.size !== undefined)
+      searchParams.append("size", params.size.toString());
 
     const response = await apiClient.get(
       `api/reviews/search?${searchParams.toString()}`

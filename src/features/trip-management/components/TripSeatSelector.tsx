@@ -6,7 +6,7 @@ const { Text } = Typography;
 
 // Add palette for consistent styling
 const PALETTE = {
-  primary: "#1f6feb", // main brand blue
+  primary: "#1f6feb", // main brand blue - for selected seats
   success: "#27ae60",
   warning: "#f39c12",
   danger: "#e74c3c",
@@ -14,79 +14,146 @@ const PALETTE = {
   muted: "#6b7280",
   border: "#d9d9d9",
   disabled: "#d9d9d9",
-  booked: "#4299e1", // blue color for booked seats in disabled trips
+  booked: "#f39c12", // orange color for booked seats (changed from blue for better distinction)
+  locked: "#ff7875", // red color for locked seats
 };
 
-interface SeatConfig {
-  cols: number;
-  rows: number;
-  floors: number;
-}
-
 interface TripSeatSelectorProps {
-  seatConfig: SeatConfig;
   selectedSeats: string[];
   onSeatSelect: (seatId: string) => void;
   availableSeats: number;
-  seatStatuses?: SeatStatus[]; // Add new prop for seat statuses from API
-  tripStatus?: string; // Add new prop for trip status
+  seatStatuses?: SeatStatus[]; // Seat statuses from API with new format
+  tripStatus?: string;
+}
+
+interface ParsedSeat {
+  seatNumber: string;
+  column: string;
+  row: number;
+  floor: number;
+  status: string;
 }
 
 const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
-  seatConfig,
   selectedSeats,
   onSeatSelect,
-  seatStatuses = [], // Default to empty array
-  tripStatus = "scheduled", // Default to scheduled
+  seatStatuses = [],
+  tripStatus = "scheduled",
 }) => {
   // Check if trip is bookable based on status
   const isTripBookable = React.useMemo(() => {
-    return !["cancelled", "delayed", "departed"].includes(tripStatus);
+    return ["on_sell"].includes(tripStatus); // Only on_sell trips are bookable
   }, [tripStatus]);
 
-  // Map seat statuses from API to a more efficient lookup
-  const seatStatusMap = React.useMemo(() => {
-    const map = new Map<string, string>();
+  // Parse seat data from new format (e.g., "A.1.1" -> {column: "A", row: 1, floor: 1})
+  const parsedSeats = React.useMemo(() => {
+    const seats: ParsedSeat[] = [];
+
     seatStatuses.forEach((seat) => {
-      map.set(seat.seatNumber, seat.status);
+      const parts = seat.seatNumber.split(".");
+      if (parts.length === 3) {
+        const [column, rowStr, floorStr] = parts;
+        const row = parseInt(rowStr);
+        const floor = parseInt(floorStr);
+
+        if (!isNaN(row) && !isNaN(floor)) {
+          seats.push({
+            seatNumber: seat.seatNumber,
+            column,
+            row,
+            floor,
+            status: seat.status,
+          });
+        }
+      }
     });
-    return map;
+
+    return seats;
   }, [seatStatuses]);
 
-  const getSeatLabel = (row: number, col: number): string => {
-    return `${String.fromCharCode(64 + row)}${col}`;
-  };
+  // Group seats by floor and organize them for rendering
+  const seatsByFloor = React.useMemo(() => {
+    const floors: {
+      [key: number]: { [key: string]: { [key: number]: ParsedSeat } };
+    } = {};
 
-  const renderSeat = (row: number, col: number, floor: number) => {
-    const seatId = `${floor}-${row}-${col}`;
-    const seatLabel = getSeatLabel(row, col);
+    parsedSeats.forEach((seat) => {
+      if (!floors[seat.floor]) {
+        floors[seat.floor] = {};
+      }
+      if (!floors[seat.floor][seat.column]) {
+        floors[seat.floor][seat.column] = {};
+      }
+      floors[seat.floor][seat.column][seat.row] = seat;
+    });
 
-    // Get seat status from the map
-    const status = seatStatusMap.get(seatLabel);
-    const isUnavailable = status !== undefined && status !== "available";
-    const isSelected = selectedSeats.includes(seatId);
+    return floors;
+  }, [parsedSeats]);
 
-    // Check if this is a booked or locked seat that needs special coloring
-    const isBookedOrLocked = status === "booked" || status === "locked";
+  // Get available columns and rows from actual data
+  const { availableColumns, maxRows, availableFloors } = React.useMemo(() => {
+    const columns = new Set<string>();
+    let maxRow = 0;
+    const floors = new Set<number>();
 
-    // For non-bookable trips, determine the appropriate styling
+    parsedSeats.forEach((seat) => {
+      columns.add(seat.column);
+      maxRow = Math.max(maxRow, seat.row);
+      floors.add(seat.floor);
+    });
+
+    return {
+      availableColumns: Array.from(columns).sort(),
+      maxRows: maxRow,
+      availableFloors: Array.from(floors).sort((a, b) => a - b),
+    };
+  }, [parsedSeats]);
+
+  const renderSeat = (column: string, row: number, floor: number) => {
+    const seat = seatsByFloor[floor]?.[column]?.[row];
+    const seatNumber = seat ? seat.seatNumber : `${column}.${row}.${floor}`;
+    const seatLabel = `${column}${row}`;
+
+    // If no seat data exists, don't render anything (empty space)
+    if (!seat) {
+      return (
+        <Col
+          span={6}
+          key={`empty-${column}-${row}-${floor}`}
+          style={{ padding: 4 }}
+        >
+          <div style={{ height: 40 }} />
+        </Col>
+      );
+    }
+
+    const isUnavailable = seat.status !== "available";
+    const isSelected = selectedSeats.includes(seatNumber);
+    const isBooked = seat.status === "booked";
+    const isLocked = seat.status === "locked";
+
+    // Determine seat styling based on trip status and seat status
     let seatStyle = {};
-    let seatType = "default";
+    let seatType: "primary" | "default" = "default"; // Explicitly type seatType
     let seatDisabled = isUnavailable;
 
     if (!isTripBookable) {
-      // Trip is not bookable (cancelled, delayed, departed)
-      seatDisabled = true; // All seats disabled
+      // Trip is not bookable - all seats disabled
+      seatDisabled = true;
 
-      if (isBookedOrLocked) {
-        // Booked or locked seats in a non-bookable trip get blue color
+      if (isBooked) {
         seatStyle = {
           backgroundColor: PALETTE.booked,
           color: "white",
           border: `1px solid ${PALETTE.booked}`,
         };
+      } else if (isLocked) {
+        seatStyle = {
+          backgroundColor: PALETTE.locked,
+          color: "white",
+          border: `1px solid ${PALETTE.locked}`,
+        };
       } else {
-        // Other seats get gray color
         seatStyle = {
           backgroundColor: PALETTE.disabled,
           color: PALETTE.muted,
@@ -95,38 +162,52 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
       }
     } else {
       // Trip is bookable - use normal styling
-      seatStyle = {
-        backgroundColor: isUnavailable
-          ? "#f5f5f5"
-          : isSelected
-          ? "#1890ff"
-          : "white",
-        color: isUnavailable
-          ? "#999"
-          : isSelected
-          ? "white"
-          : "rgba(0, 0, 0, 0.65)",
-        border: isUnavailable ? "1px dashed #d9d9d9" : "1px solid #d9d9d9",
-      };
-      seatType = isSelected ? "primary" : "default";
+      if (isSelected) {
+        seatStyle = {
+          backgroundColor: PALETTE.primary,
+          color: "white",
+          border: `1px solid ${PALETTE.primary}`,
+        };
+        seatType = "primary";
+      } else if (isBooked) {
+        seatStyle = {
+          backgroundColor: PALETTE.booked,
+          color: "white",
+          border: `1px solid ${PALETTE.booked}`,
+        };
+      } else if (isLocked) {
+        seatStyle = {
+          backgroundColor: PALETTE.locked,
+          color: "white",
+          border: `1px solid ${PALETTE.locked}`,
+        };
+      } else {
+        // Available seat
+        seatStyle = {
+          backgroundColor: "white",
+          color: "rgba(0, 0, 0, 0.65)",
+          border: `1px solid ${PALETTE.border}`,
+        };
+      }
     }
 
+    const getTooltipText = () => {
+      if (!isTripBookable) {
+        if (isBooked) return "Ghế đã được đặt";
+        if (isLocked) return "Ghế bị khóa";
+        return "Chuyến đi không khả dụng";
+      }
+
+      if (isBooked) return "Ghế đã được đặt";
+      if (isLocked) return "Ghế bị khóa";
+      return `Ghế ${seatLabel}`;
+    };
+
     return (
-      <Col span={6} key={seatId} style={{ padding: 4 }}>
-        <Tooltip
-          title={
-            !isTripBookable
-              ? isBookedOrLocked
-                ? "Ghế đã được đặt"
-                : "Chuyến đi không khả dụng"
-              : isUnavailable
-              ? "Ghế đã được đặt"
-              : `Ghế ${seatLabel}`
-          }
-        >
+      <Col span={6} key={seatNumber} style={{ padding: 4 }}>
+        <Tooltip title={getTooltipText()}>
           <Button
             type={seatType}
-            danger={isUnavailable && isTripBookable}
             disabled={seatDisabled}
             style={{
               width: "100%",
@@ -134,7 +215,9 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
               ...seatStyle,
             }}
             onClick={() =>
-              isTripBookable && !isUnavailable && onSeatSelect(seatId)
+              isTripBookable &&
+              seat.status === "available" &&
+              onSeatSelect(seatNumber)
             }
           >
             {seatLabel}
@@ -147,9 +230,7 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
   const renderRow = (rowIndex: number, floor: number) => {
     return (
       <Row key={`row-${floor}-${rowIndex}`} style={{ marginBottom: 8 }}>
-        {Array.from({ length: seatConfig.cols }).map((_, colIndex) =>
-          renderSeat(rowIndex + 1, colIndex + 1, floor)
-        )}
+        {availableColumns.map((column) => renderSeat(column, rowIndex, floor))}
       </Row>
     );
   };
@@ -157,8 +238,8 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
   const renderFloor = (floorIndex: number) => {
     return (
       <div key={`floor-${floorIndex}`}>
-        {Array.from({ length: seatConfig.rows }).map((_, rowIndex) =>
-          renderRow(rowIndex, floorIndex)
+        {Array.from({ length: maxRows }).map((_, rowIndex) =>
+          renderRow(rowIndex + 1, floorIndex)
         )}
       </div>
     );
@@ -199,12 +280,22 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
                   style={{
                     width: 16,
                     height: 16,
-                    backgroundColor: PALETTE.surface,
-                    border: `1px dashed ${PALETTE.border}`,
+                    backgroundColor: PALETTE.booked,
                     marginRight: 8,
                   }}
                 ></div>
                 <Text>Ghế đã đặt</Text>
+              </div>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    backgroundColor: PALETTE.locked,
+                    marginRight: 8,
+                  }}
+                ></div>
+                <Text>Ghế bị khóa</Text>
               </div>
             </>
           )}
@@ -233,6 +324,17 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
                 ></div>
                 <Text>Ghế đã đặt trước đó</Text>
               </div>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    backgroundColor: PALETTE.locked,
+                    marginRight: 8,
+                  }}
+                ></div>
+                <Text>Ghế bị khóa</Text>
+              </div>
             </>
           )}
         </Space>
@@ -252,19 +354,34 @@ const TripSeatSelector: React.FC<TripSeatSelectorProps> = ({
           <Text strong>Phía trước xe</Text>
         </div>
 
-        {/* Floors in Tabs */}
-        <Tabs
-          defaultActiveKey="1"
-          items={Array.from({ length: seatConfig.floors }).map((_, index) => ({
-            key: (index + 1).toString(),
-            label: `Tầng ${index + 1}`,
-            children: renderFloor(index + 1),
-          }))}
-          tabBarStyle={{ marginBottom: 16 }}
-          animated={true}
-          size="small"
-          type="card"
-        />
+        {/* Floors in Tabs - only show if there are floors */}
+        {availableFloors.length > 0 && (
+          <Tabs
+            defaultActiveKey={availableFloors[0]?.toString()}
+            items={availableFloors.map((floor) => ({
+              key: floor.toString(),
+              label: `Tầng ${floor}`,
+              children: renderFloor(floor),
+            }))}
+            tabBarStyle={{ marginBottom: 16 }}
+            animated={true}
+            size="small"
+            type="card"
+          />
+        )}
+
+        {/* Show message if no seat data */}
+        {availableFloors.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px",
+              color: PALETTE.muted,
+            }}
+          >
+            <Text>Không có dữ liệu ghế</Text>
+          </div>
+        )}
 
         {/* Back of bus indicator */}
         <div
