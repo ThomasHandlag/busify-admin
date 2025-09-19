@@ -204,7 +204,7 @@ const PromotionTable: React.FC<PromotionTableProps> = ({
       },
     },
     {
-      title: "Sử dụng",
+      title: "Số lượng còn lại",
       key: "usage",
       width: 120,
       render: (record: PromotionResponseDTO) => {
@@ -217,10 +217,9 @@ const PromotionTable: React.FC<PromotionTableProps> = ({
         return (
           <Space direction="vertical" size="small">
             <Space size="small">
-              <UserOutlined style={{ fontSize: "12px" }} />
               <Text style={{ fontSize: "12px" }}>
                 {record.usageCount}
-                {record.usageLimit ? ` / ${record.usageLimit}` : ""}
+                {record.usageLimit ? ` ${record.usageLimit}` : ""}
               </Text>
             </Space>
             {record.usageLimit && (

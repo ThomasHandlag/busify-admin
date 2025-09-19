@@ -19,17 +19,11 @@ import {
   UserOutlined,
   CarOutlined,
   ReadOutlined,
-  DollarCircleOutlined,
-  SettingOutlined,
   FileTextOutlined,
   TeamOutlined,
   TruckOutlined,
   RiseOutlined,
   EyeOutlined,
-  PlusOutlined,
-  EditOutlined,
-  SearchOutlined,
-  DeleteOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
 import { NotificationDemo } from "../../../components/NotificationDemo";
@@ -37,7 +31,7 @@ import { useAuthStore } from "../../../stores/auth_store";
 import { useDashboardStats, useRecentActivities } from "../hooks/useDashboard";
 import { DashboardCharts } from "../components/DashboardCharts";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const Dashboard = () => {
   const auth = useAuthStore();
@@ -87,63 +81,6 @@ const Dashboard = () => {
   // Show data source for debugging
   const dataSource = stats ? "API" : "Fallback";
   console.log(`📊 Using ${dataSource} data:`, dashboardStats);
-
-  const quickActions = [
-    {
-      title: "Quản lý Người dùng",
-      icon: <UserOutlined style={{ fontSize: "24px", color: "#1890ff" }} />,
-      description: "Thêm, sửa, tìm kiếm, xóa người dùng",
-      actions: [
-        "Thêm người dùng",
-        "Sửa người dùng",
-        "Tìm kiếm người dùng",
-        "Xóa người dùng",
-      ],
-      color: "#e6f7ff",
-    },
-    {
-      title: "Quản lý Nhà xe",
-      icon: <CarOutlined style={{ fontSize: "24px", color: "#52c41a" }} />,
-      description: "Thêm, sửa, tìm kiếm, xóa nhà xe",
-      actions: ["Thêm nhà xe", "Sửa nhà xe", "Tìm kiếm nhà xe", "Xóa nhà xe"],
-      color: "#f6ffed",
-    },
-    {
-      title: "Quản lý Tuyến xe",
-      icon: <ReadOutlined style={{ fontSize: "24px", color: "#fa8c16" }} />,
-      description: "Thêm, sửa, tìm kiếm, xóa tuyến xe",
-      actions: [
-        "Thêm tuyến xe",
-        "Sửa tuyến xe",
-        "Tìm kiếm tuyến xe",
-        "Xóa tuyến xe",
-      ],
-      color: "#fff7e6",
-    },
-    {
-      title: "Theo dõi Doanh thu",
-      icon: (
-        <DollarCircleOutlined style={{ fontSize: "24px", color: "#eb2f96" }} />
-      ),
-      description: "Báo cáo doanh thu và thống kê",
-      actions: ["Xem báo cáo", "Xuất báo cáo", "Thống kê theo tháng"],
-      color: "#fff0f6",
-    },
-    {
-      title: "Phân quyền Vai trò",
-      icon: <SettingOutlined style={{ fontSize: "24px", color: "#722ed1" }} />,
-      description: "Quản lý quyền hạn và vai trò",
-      actions: ["Phân quyền", "Quản lý vai trò", "Cài đặt quyền"],
-      color: "#f9f0ff",
-    },
-    {
-      title: "Quản lý Logs",
-      icon: <FileTextOutlined style={{ fontSize: "24px", color: "#13c2c2" }} />,
-      description: "Theo dõi và quản lý logs hệ thống",
-      actions: ["Xem logs", "Tìm kiếm logs", "Xuất logs"],
-      color: "#e6fffb",
-    },
-  ];
 
   return (
     <div
