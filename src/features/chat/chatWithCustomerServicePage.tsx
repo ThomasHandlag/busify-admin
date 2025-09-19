@@ -5,16 +5,18 @@ import { ChatMessageList } from "./components/ChatMessageList";
 import { MessageInput } from "./components/MessageInput";
 import { EmptyState } from "./components/EmptyState";
 import { useAuthStore } from "../../stores/auth_store";
-import { Col, message, Row } from "antd";
+import { Col, Row, Spin } from "antd";
 import type { ChatMessage, ChatSession } from "../../app/api/chat";
 import { fetchChatSessions, fetchMessages } from "../../app/api/chat";
 import { useWebSocket } from "../../app/provider/WebSocketContext";
 import type { ChatNotification } from "../../app/service/WebSocketService";
 import { getVNISOString } from "../../utils/time_stamp";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const ChatWithCustomerServicePage = () => {
   const [searchParams] = useSearchParams();
   const { loggedInUser } = useAuthStore();
+  const queryClient = useQueryClient();
   const {
     isConnected,
     subscribeToRoom,
@@ -26,53 +28,93 @@ export const ChatWithCustomerServicePage = () => {
   } = useWebSocket();
 
   const [searchText, setSearchText] = useState("");
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedChat, setSelectedChat] = useState<ChatSession | null>(null);
   const [messageText, setMessageText] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Handle chat selection
-  const handleChatSelect = useCallback(async (chat: ChatSession) => {
-    setSelectedChat(chat);
+  // Fetch chat sessions using React Query
+  const {
+    data: chatSessions = [],
+    isLoading: isLoadingChatSessions,
+    isError: isErrorChatSessions,
+    error: errorChatSessions,
+  } = useQuery({
+    queryKey: ["chatSessions"],
+    queryFn: fetchChatSessions,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
 
-    try {
-      const fetchedMessages = await fetchMessages(chat.id);
-      setMessages(fetchedMessages);
-    } catch (error) {
-      console.error("Failed to fetch messages:", error);
-      message.error("Không thể tải lịch sử tin nhắn");
-      setMessages([]);
-    }
+  // Fetch messages for selected chat using React Query
+  const {
+    data: messages = [],
+    isLoading: isLoadingMessages,
+    isError: isErrorMessages,
+  } = useQuery({
+    queryKey: ["chatMessages", selectedChat?.id],
+    queryFn: () =>
+      selectedChat?.id ? fetchMessages(selectedChat.id) : Promise.resolve([]),
+    enabled: !!selectedChat?.id, // Only run query if we have a selected chat
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
 
-    // Mark as read locally by resetting unread count
-    setChatSessions((prev) =>
-      prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
-    );
-  }, []);
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async ({
+      roomId,
+      message,
+    }: {
+      roomId: string;
+      message: Omit<ChatMessage, "id">;
+    }) => {
+      sendMessage(roomId, message);
+      return { roomId, message };
+    },
+    onSuccess: (data) => {
+      // Optimistically update the messages list in the cache
+      const { roomId, message } = data;
 
-  // Update chat list when a new message is received
-  const updateChatWithNewMessage = useCallback(
-    (newMessage: ChatMessage) => {
-      if (!newMessage.roomId) return;
+      queryClient.setQueryData<ChatMessage[]>(
+        ["chatMessages", roomId],
+        (oldMessages = []) => [
+          ...oldMessages,
+          // Create a temporary id for the optimistic update
+          { ...message, id: Date.now() } as ChatMessage,
+        ]
+      );
 
-      setChatSessions((prev) =>
-        prev.map((chat) =>
-          chat.id === newMessage.roomId
-            ? {
-                ...chat,
-                lastMessage: newMessage.content,
-                lastMessageTime: newMessage.timestamp,
-                unreadCount:
-                  selectedChat?.id === newMessage.roomId
-                    ? 0
-                    : (chat.unreadCount || 0) + 1, // Increment only if not current room
-              }
-            : chat
-        )
+      // Update the chat session with the new message
+      queryClient.setQueryData<ChatSession[]>(
+        ["chatSessions"],
+        (oldSessions = []) =>
+          oldSessions.map((chat) =>
+            chat.id === roomId
+              ? {
+                  ...chat,
+                  lastMessage: message.content,
+                  lastMessageTime: message.timestamp,
+                }
+              : chat
+          )
       );
     },
-    [selectedChat?.id]
+  });
+
+  // Handle chat selection
+  const handleChatSelect = useCallback(
+    (chat: ChatSession) => {
+      setSelectedChat(chat);
+
+      // Mark as read locally by resetting unread count
+      queryClient.setQueryData<ChatSession[]>(
+        ["chatSessions"],
+        (oldSessions = []) =>
+          oldSessions.map((c) =>
+            c.id === chat.id ? { ...c, unreadCount: 0 } : c
+          )
+      );
+    },
+    [queryClient]
   );
 
   // Message handler function
@@ -81,12 +123,31 @@ export const ChatWithCustomerServicePage = () => {
       console.log("New message received:", newMessage);
 
       // Add to messages list if from current room
-      setMessages((prev) => [...prev, newMessage]);
+      queryClient.setQueryData<ChatMessage[]>(
+        ["chatMessages", newMessage.roomId],
+        (oldMessages = []) => [...oldMessages, newMessage]
+      );
 
       // Update chat list with new message info
-      updateChatWithNewMessage(newMessage);
+      queryClient.setQueryData<ChatSession[]>(
+        ["chatSessions"],
+        (oldSessions = []) =>
+          oldSessions.map((chat) =>
+            chat.id === newMessage.roomId
+              ? {
+                  ...chat,
+                  lastMessage: newMessage.content,
+                  lastMessageTime: newMessage.timestamp,
+                  unreadCount:
+                    selectedChat?.id === newMessage.roomId
+                      ? 0
+                      : (chat.unreadCount || 0) + 1,
+                }
+              : chat
+          )
+      );
     },
-    [updateChatWithNewMessage]
+    [queryClient, selectedChat?.id]
   );
 
   // Notification handler function for messages in other rooms
@@ -94,24 +155,37 @@ export const ChatWithCustomerServicePage = () => {
     (notification: ChatNotification) => {
       console.log("Received notification:", notification);
 
-      // Update chat list with notification info and increment unread count
-      setChatSessions((prev) =>
-        prev.map((chat) =>
-          chat.id === notification.roomId
-            ? {
-                ...chat,
-                lastMessage: notification.contentPreview,
-                lastMessageTime: notification.timestamp,
-                unreadCount:
-                  selectedChat?.id === notification.roomId
-                    ? 0
-                    : (chat.unreadCount || 0) + 1, // Increment only if not current room
-              }
-            : chat
-        )
+      queryClient.setQueryData<ChatSession[]>(
+        ["chatSessions"],
+        (oldSessions = []) => {
+          const sessionExists = oldSessions.some(
+            (chat) => chat.id === notification.roomId
+          );
+
+          if (sessionExists) {
+            // Cập nhật session đã có
+            return oldSessions.map((chat) =>
+              chat.id === notification.roomId
+                ? {
+                    ...chat,
+                    lastMessage: notification.contentPreview,
+                    lastMessageTime: notification.timestamp,
+                    unreadCount:
+                      selectedChat?.id === notification.roomId
+                        ? 0
+                        : (chat.unreadCount || 0) + 1,
+                  }
+                : chat
+            );
+          } else {
+            // Nếu session chưa có, làm mới toàn bộ danh sách để lấy session mới
+            queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
+            return oldSessions;
+          }
+        }
       );
     },
-    [selectedChat?.id]
+    [queryClient, selectedChat?.id]
   );
 
   // Subscribe to selected room when it changes
@@ -147,33 +221,22 @@ export const ChatWithCustomerServicePage = () => {
     };
   }, [addNotificationHandler, removeNotificationHandler, handleNotification]);
 
-  // Load chat sessions
-  useEffect(() => {
-    const loadChatSessions = async () => {
-      try {
-        const sessions = await fetchChatSessions();
-        setChatSessions(sessions);
-      } catch (error) {
-        console.error("Failed to fetch chat sessions:", error);
-        message.error("Không thể tải danh sách cuộc trò chuyện");
-      }
-    };
-
-    if (loggedInUser?.email) {
-      loadChatSessions();
-    }
-  }, [loggedInUser]);
-
   // Auto-select chat from URL parameter
   useEffect(() => {
     const chatIdFromUrl = searchParams.get("chatId");
-    if (chatIdFromUrl && chatSessions.length > 0) {
+    if (chatIdFromUrl && chatSessions.length > 0 && !isLoadingChatSessions) {
       const chatToSelect = chatSessions.find((c) => c.id === chatIdFromUrl);
       if (chatToSelect && chatToSelect.id !== selectedChat?.id) {
         handleChatSelect(chatToSelect);
       }
     }
-  }, [chatSessions, searchParams, handleChatSelect, selectedChat?.id]);
+  }, [
+    chatSessions,
+    searchParams,
+    handleChatSelect,
+    selectedChat?.id,
+    isLoadingChatSessions,
+  ]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -189,21 +252,57 @@ export const ChatWithCustomerServicePage = () => {
       sender: loggedInUser.email,
       content: messageText.trim(),
       type: "CHAT",
-      // đổi qua giờ vn
       timestamp: getVNISOString(),
       roomId: selectedChat.id,
     };
 
-    console.log("Sending message:", chatMessage.timestamp);
-
-    // Send to the room-specific endpoint using the context
-    sendMessage(selectedChat.id, chatMessage);
+    // Use mutation to send message
+    sendMessageMutation.mutate({
+      roomId: selectedChat.id,
+      message: chatMessage,
+    });
 
     // Clear the input after sending
     setMessageText("");
   };
 
-  // Rest of your component remains the same...
+  // Show loading state if initial data is loading
+  if (isLoadingChatSessions && chatSessions.length === 0) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "calc(100vh - 160px)",
+        }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Show error state if there was an error loading chat sessions
+  if (isErrorChatSessions) {
+    return (
+      <div style={{ padding: "24px", textAlign: "center" }}>
+        <h3>Lỗi khi tải danh sách cuộc trò chuyện</h3>
+        <p>
+          {errorChatSessions instanceof Error
+            ? errorChatSessions.message
+            : "Vui lòng thử lại sau"}
+        </p>
+        <button
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ["chatSessions"] })
+          }
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{}}>
       <div
@@ -239,11 +338,45 @@ export const ChatWithCustomerServicePage = () => {
           >
             {selectedChat ? (
               <>
-                <ChatMessageList
-                  messages={messages}
-                  loggedInUser={loggedInUser}
-                  customerName={selectedChat.customerName}
-                />
+                {isLoadingMessages && messages.length === 0 ? (
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Spin size="large" />
+                  </div>
+                ) : isErrorMessages ? (
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      flexDirection: "column",
+                    }}
+                  >
+                    <h3>Lỗi khi tải tin nhắn</h3>
+                    <button
+                      onClick={() =>
+                        queryClient.invalidateQueries({
+                          queryKey: ["chatMessages", selectedChat.id],
+                        })
+                      }
+                    >
+                      Thử lại
+                    </button>
+                  </div>
+                ) : (
+                  <ChatMessageList
+                    messages={messages}
+                    loggedInUser={loggedInUser}
+                    customerName={selectedChat.customerName}
+                  />
+                )}
                 <MessageInput
                   messageText={messageText}
                   onMessageChange={setMessageText}

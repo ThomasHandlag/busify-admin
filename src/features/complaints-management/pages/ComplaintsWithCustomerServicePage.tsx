@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Card,
   Form,
@@ -30,11 +30,17 @@ import {
   ClearOutlined,
   MessageOutlined,
   FilterOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import type { TableProps } from "antd";
 import dayjs from "dayjs";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ComplaintDetailModal from "../components/ComplaintDetailModal";
-import { getAllComplaints, type Complaint } from "../../../app/api/complaint";
+import {
+  getAllComplaints,
+  updateComplaintStatus,
+  type ComplaintDetail,
+} from "../../../app/api/complaint";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -42,55 +48,92 @@ const { RangePicker } = DatePicker;
 const { TabPane } = Tabs;
 
 const ComplaintsWithCustomerServicePage: React.FC = () => {
+  const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
-  const [allComplaints, setAllComplaints] = useState<Complaint[]>([]);
-  const [searchResults, setSearchResults] = useState<Complaint[]>([]);
-  const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(
-    null
-  );
+  const [selectedComplaint, setSelectedComplaint] =
+    useState<ComplaintDetail | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("search");
 
-  // Fetch all complaints on component mount
-  useEffect(() => {
-    const fetchComplaints = async () => {
-      setLoading(true);
-      try {
-        const response = await getAllComplaints();
-        setAllComplaints(response.result.complaints);
-        setSearchResults(response.result.complaints);
-      } catch (error) {
-        message.error("Không thể tải danh sách khiếu nại");
-        console.error("Error fetching complaints:", error);
-      } finally {
-        setLoading(false);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Truy vấn để tải tất cả các khiếu nại với phân trang
+  const {
+    data: complaintsPageData,
+    isLoading: isLoadingComplaints,
+    isError: isErrorComplaints,
+    error: errorComplaints,
+  } = useQuery({
+    queryKey: ["complaints", currentPage, pageSize],
+    queryFn: async () => {
+      const response = await getAllComplaints({
+        page: currentPage,
+        size: pageSize,
+      });
+      if (response.code === 200) {
+        setTotalElements(response.result.totalElements);
+        setTotalPages(response.result.totalPages);
+        return response.result;
       }
-    };
+      return {
+        complaints: [],
+        currentPage: 0,
+        totalPages: 0,
+        totalElements: 0,
+        hasNext: false,
+        hasPrevious: false,
+      };
+    },
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+  });
 
-    fetchComplaints();
-  }, []);
+  // Mutation cho chức năng cập nhật trạng thái khiếu nại
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      updateComplaintStatus(id, status),
+    onSuccess: (_response, variables) => {
+      message.success(
+        `Đã cập nhật trạng thái khiếu nại #${variables.id} thành công`
+      );
 
-  const handleSearch = async (values: any) => {
-    const { customerName, title, description } = values;
+      // Cập nhật cache với khiếu nại đã cập nhật
+      queryClient.invalidateQueries({ queryKey: ["complaints"] });
 
-    if (!customerName && !title && !description) {
-      message.warning("Vui lòng nhập ít nhất một từ khóa để tìm kiếm");
-      return;
-    }
+      // Đóng modal nếu đang mở
+      if (selectedComplaint?.id === variables.id) {
+        setIsModalVisible(false);
+        setSelectedComplaint(null);
+      }
+    },
+    onError: (error: Error) => {
+      message.error(`Lỗi khi cập nhật trạng thái khiếu nại: ${error.message}`);
+    },
+  });
 
-    setLoading(true);
-    setHasSearched(true);
+  // Mutation cho chức năng tìm kiếm khiếu nại
+  const searchMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const { customerName, title, description } = values;
 
-    try {
-      let results = allComplaints;
+      if (!customerName && !title && !description) {
+        throw new Error("Vui lòng nhập ít nhất một từ khóa để tìm kiếm");
+      }
+
+      // For now, filter only current page data.
+      // In a real scenario, you'd want to send search params to the API
+      const currentComplaints = complaintsPageData?.complaints || [];
+      let results = currentComplaints;
 
       if (customerName) {
         results = results.filter((complaint) =>
-          complaint.customerName
-            .toLowerCase()
+          complaint.customer?.customerName
+            ?.toLowerCase()
             .includes(customerName.toLowerCase())
         );
       }
@@ -107,29 +150,39 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
         );
       }
 
-      setSearchResults(results);
+      return results;
+    },
+    onSuccess: (data) => {
+      // Cập nhật cache với kết quả tìm kiếm
+      queryClient.setQueryData(["complaints", "filtered"], data);
 
-      if (results.length === 0) {
+      if (data.length === 0) {
         message.info("Không tìm thấy khiếu nại phù hợp với từ khóa tìm kiếm");
       } else {
-        message.success(`Tìm thấy ${results.length} khiếu nại phù hợp`);
+        message.success(`Tìm thấy ${data.length} khiếu nại phù hợp`);
       }
-    } catch (error) {
-      message.error("Có lỗi xảy ra khi tìm kiếm");
-      console.error("Search error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleFilter = async (values: any) => {
-    const { status, dateRange, customerName } = values;
+      setHasSearched(true);
+    },
+    onError: (error: Error) => {
+      if (error.message.includes("Vui lòng nhập")) {
+        message.warning(error.message);
+      } else {
+        message.error(`Lỗi khi tìm kiếm khiếu nại: ${error.message}`);
+      }
+      queryClient.setQueryData(["complaints", "filtered"], []);
+    },
+  });
 
-    setLoading(true);
-    setHasSearched(true);
+  // Mutation cho chức năng lọc khiếu nại
+  const filterMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const { status, dateRange, customerName } = values;
 
-    try {
-      let results = allComplaints;
+      // For now, filter only current page data.
+      // In a real scenario, you'd want to send filter params to the API
+      const currentComplaints = complaintsPageData?.complaints || [];
+      let results = currentComplaints;
 
       if (status) {
         results = results.filter((complaint) => complaint.status === status);
@@ -147,51 +200,84 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
 
       if (customerName) {
         results = results.filter((complaint) =>
-          complaint.customerName
-            .toLowerCase()
+          complaint.customer?.customerName
+            ?.toLowerCase()
             .includes(customerName.toLowerCase())
         );
       }
 
-      setSearchResults(results);
+      return results;
+    },
+    onSuccess: (data) => {
+      // Cập nhật cache với kết quả lọc
+      queryClient.setQueryData(["complaints", "filtered"], data);
 
-      if (results.length === 0) {
+      if (data.length === 0) {
         message.info("Không tìm thấy khiếu nại phù hợp");
       } else {
-        message.success(`Tìm thấy ${results.length} khiếu nại`);
+        message.success(`Tìm thấy ${data.length} khiếu nại`);
       }
-    } catch (error) {
-      message.error("Có lỗi xảy ra khi lọc dữ liệu");
-      console.error("Filter error:", error);
-    } finally {
-      setLoading(false);
-    }
+
+      setHasSearched(true);
+    },
+    onError: (error: Error) => {
+      message.error(`Lỗi khi lọc khiếu nại: ${error.message}`);
+      queryClient.setQueryData(["complaints", "filtered"], []);
+    },
+  });
+
+  const handleSearch = (values: any) => {
+    searchMutation.mutate(values);
+  };
+
+  const handleFilter = (values: any) => {
+    filterMutation.mutate(values);
   };
 
   const handleReset = () => {
     form.resetFields();
     searchForm.resetFields();
-    setSearchResults(allComplaints);
     setHasSearched(false);
+    queryClient.removeQueries({ queryKey: ["complaints", "filtered"] });
   };
 
-  const handleViewDetail = (complaint: Complaint) => {
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({
+      queryKey: ["complaints", currentPage, pageSize],
+    });
+    if (hasSearched) {
+      // Reset search state and go back to paginated view
+      setHasSearched(false);
+      queryClient.removeQueries({ queryKey: ["complaints", "filtered"] });
+    }
+    message.success("Đang làm mới dữ liệu...");
+  };
+
+  const handleViewDetail = (complaint: ComplaintDetail) => {
     setSelectedComplaint(complaint);
     setIsModalVisible(true);
   };
 
-  const handleUpdateComplaint = (updatedComplaint: any) => {
-    // Update both allComplaints and searchResults
-    const updateComplaintInArray = (complaints: Complaint[]) =>
-      complaints.map((complaint) =>
-        complaint.id === updatedComplaint.id
-          ? { ...complaint, status: updatedComplaint.status }
-          : complaint
-      );
+  // Pagination handlers
+  const handlePageChange = (page: number, size?: number) => {
+    setCurrentPage(page - 1); // Ant Design uses 1-based indexing, backend uses 0-based
+    if (size && size !== pageSize) {
+      setPageSize(size);
+    }
+    // Reset search/filter when changing pages
+    if (hasSearched) {
+      setHasSearched(false);
+      queryClient.removeQueries({ queryKey: ["complaints", "filtered"] });
+    }
+  };
 
-    setAllComplaints((prev) => updateComplaintInArray(prev));
-    setSearchResults((prev) => updateComplaintInArray(prev));
-    message.success("Khiếu nại đã được xử lý thành công");
+  const handlePageSizeChange = (_current: number, size: number) => {
+    setPageSize(size);
+    setCurrentPage(0); // Reset to first page when changing page size
+    if (hasSearched) {
+      setHasSearched(false);
+      queryClient.removeQueries({ queryKey: ["complaints", "filtered"] });
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -228,7 +314,7 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
     }
   };
 
-  const columns: TableProps<Complaint>["columns"] = [
+  const columns: TableProps<ComplaintDetail>["columns"] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -268,12 +354,11 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
     },
     {
       title: "Khách hàng",
-      dataIndex: "customerName",
       key: "customerName",
-      render: (name) => (
+      render: (record: ComplaintDetail) => (
         <Space>
           <UserOutlined />
-          {name}
+          {record.customer?.customerName || "N/A"}
         </Space>
       ),
     },
@@ -318,14 +403,32 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
     },
   ];
 
+  // Quyết định dữ liệu nào hiển thị dựa trên trạng thái tìm kiếm
+  const displayComplaints = hasSearched
+    ? queryClient.getQueryData<ComplaintDetail[]>(["complaints", "filtered"]) ||
+      []
+    : complaintsPageData?.complaints || [];
+
+  // Tính toán thống kê dựa trên dữ liệu hiển thị hiện tại
   const stats = {
-    total: searchResults.length,
-    new: searchResults.filter((c) => c.status === "New").length,
-    pending: searchResults.filter((c) => c.status === "pending").length,
-    inProgress: searchResults.filter((c) => c.status === "in_progress").length,
-    resolved: searchResults.filter((c) => c.status === "resolved").length,
-    rejected: searchResults.filter((c) => c.status === "rejected").length,
+    total: hasSearched ? displayComplaints.length : totalElements,
+    new: displayComplaints.filter((c: any) => c.status === "New").length,
+    pending: displayComplaints.filter((c: any) => c.status === "pending")
+      .length,
+    inProgress: displayComplaints.filter((c: any) => c.status === "in_progress")
+      .length,
+    resolved: displayComplaints.filter((c: any) => c.status === "resolved")
+      .length,
+    rejected: displayComplaints.filter((c: any) => c.status === "rejected")
+      .length,
   };
+
+  // Trạng thái loading tổng hợp
+  const isLoading =
+    isLoadingComplaints ||
+    searchMutation.isPending ||
+    filterMutation.isPending ||
+    updateStatusMutation.isPending;
 
   return (
     <div style={{ padding: "24px" }}>
@@ -341,9 +444,38 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
         ]}
       />
 
-      <Title level={2} style={{ marginBottom: "24px" }}>
-        <ExclamationCircleOutlined /> Quản lý khiếu nại khách hàng
-      </Title>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "24px",
+        }}
+      >
+        <Title level={2} style={{ margin: 0 }}>
+          <ExclamationCircleOutlined /> Quản lý khiếu nại khách hàng
+        </Title>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={handleRefresh}
+          loading={isLoading}
+        >
+          Làm mới
+        </Button>
+      </div>
+
+      {/* Hiển thị lỗi nếu có */}
+      {isErrorComplaints && (
+        <Alert
+          message="Lỗi tải dữ liệu"
+          description={
+            errorComplaints?.message || "Không thể tải danh sách khiếu nại"
+          }
+          type="error"
+          showIcon
+          style={{ marginBottom: "16px" }}
+        />
+      )}
 
       {/* Search and Filter Tabs */}
       <Card style={{ marginBottom: "24px" }}>
@@ -396,7 +528,7 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
                       type="primary"
                       htmlType="submit"
                       icon={<SearchOutlined />}
-                      loading={loading}
+                      loading={searchMutation.isPending}
                     >
                       Tìm kiếm
                     </Button>
@@ -460,7 +592,7 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
                       type="primary"
                       htmlType="submit"
                       icon={<FilterOutlined />}
-                      loading={loading}
+                      loading={filterMutation.isPending}
                     >
                       Lọc khiếu nại
                     </Button>
@@ -536,13 +668,15 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
 
       {/* Results Table */}
       <Card>
-        {searchResults.length === 0 ? (
+        {displayComplaints.length === 0 && !isLoading ? (
           <Empty description="Không có khiếu nại nào" />
         ) : (
           <>
             {hasSearched && (
               <Alert
-                message={`Tìm thấy ${searchResults.length} khiếu nại phù hợp${
+                message={`Tìm thấy ${
+                  displayComplaints.length
+                } khiếu nại phù hợp${
                   activeTab === "search"
                     ? " với từ khóa tìm kiếm"
                     : " với bộ lọc"
@@ -554,7 +688,9 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
             )}
             {!hasSearched && (
               <Alert
-                message={`Hiển thị tất cả ${searchResults.length} khiếu nại trong hệ thống`}
+                message={`Hiển thị trang ${
+                  currentPage + 1
+                }/${totalPages} (${totalElements} khiếu nại trong hệ thống)`}
                 type="info"
                 showIcon
                 style={{ marginBottom: "16px" }}
@@ -562,17 +698,31 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
             )}
             <Table
               columns={columns}
-              dataSource={searchResults}
+              dataSource={displayComplaints}
               rowKey="id"
-              loading={loading}
+              loading={isLoading}
               scroll={{ x: 1000 }}
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} của ${total} khiếu nại`,
-              }}
+              pagination={
+                hasSearched
+                  ? {
+                      pageSize: displayComplaints.length,
+                      hideOnSinglePage: true,
+                      showTotal: (total, range) =>
+                        `${range[0]}-${range[1]} của ${total} kết quả tìm kiếm`,
+                    }
+                  : {
+                      current: currentPage + 1, // Ant Design uses 1-based indexing
+                      pageSize: pageSize,
+                      total: totalElements,
+                      showSizeChanger: true,
+                      showQuickJumper: true,
+                      pageSizeOptions: ["10", "20", "50", "100"],
+                      onChange: handlePageChange,
+                      onShowSizeChange: handlePageSizeChange,
+                      showTotal: (total, range) =>
+                        `${range[0]}-${range[1]} của ${total} khiếu nại`,
+                    }
+              }
             />
           </>
         )}
@@ -586,7 +736,6 @@ const ComplaintsWithCustomerServicePage: React.FC = () => {
           setIsModalVisible(false);
           setSelectedComplaint(null);
         }}
-        onUpdate={handleUpdateComplaint}
       />
     </div>
   );

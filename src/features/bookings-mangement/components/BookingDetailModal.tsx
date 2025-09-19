@@ -30,6 +30,8 @@ import {
   CreditCardOutlined,
   HomeOutlined,
   DeleteOutlined,
+  GlobalOutlined,
+  ShopOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
@@ -619,6 +621,19 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                     )}
                     {bookingDetail.payment_info?.method ||
                       booking.payment_method}
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Phương thức bán">
+                  <Space>
+                    {(bookingDetail?.selling_method ||
+                      booking.selling_method) === "ONLINE" ? (
+                      <GlobalOutlined />
+                    ) : (
+                      <ShopOutlined />
+                    )}
+                    {bookingDetail?.selling_method ||
+                      booking.selling_method ||
+                      "N/A"}
                   </Space>
                 </Descriptions.Item>
                 <Descriptions.Item label="Thời gian thanh toán">

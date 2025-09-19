@@ -1,26 +1,19 @@
 import React from "react";
-import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Space,
-  Input,
-  Segmented,
-} from "antd";
+import { Card, Row, Col, Statistic, Space, Input, Segmented } from "antd";
 import {
   ExclamationCircleOutlined,
-  ClockCircleOutlined,
   CheckCircleOutlined,
-  WarningOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 
+// Cập nhật interface StatsData để loại bỏ pending
 interface StatsData {
-  totalOpen: number;
+  new: number;
+  // Loại bỏ pending
   inProgress: number;
+  resolved: number;
+  rejected: number;
   resolvedToday: number;
-  overdue: number;
   avgResponseTime: string;
   customerSatisfaction: number;
 }
@@ -63,27 +56,31 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
             <Space size="large" wrap>
               <Statistic
                 title="Mới"
-                value={stats.totalOpen}
+                value={stats.new}
                 prefix={<ExclamationCircleOutlined />}
                 valueStyle={{ color: "#f5222d" }}
               />
+              {/* Loại bỏ Statistic cho "Chờ xử lý" */}
               <Statistic
                 title="Đang xử lý"
                 value={stats.inProgress}
-                prefix={<ClockCircleOutlined />}
                 valueStyle={{ color: "#1890ff" }}
+              />
+              <Statistic
+                title="Đã giải quyết"
+                value={stats.resolved}
+                valueStyle={{ color: "#52c41a" }}
+              />
+              <Statistic
+                title="Từ chối"
+                value={stats.rejected}
+                valueStyle={{ color: "#722ed1" }}
               />
               <Statistic
                 title="Giải quyết hôm nay"
                 value={stats.resolvedToday}
                 prefix={<CheckCircleOutlined />}
                 valueStyle={{ color: "#52c41a" }}
-              />
-              <Statistic
-                title="Quá hạn"
-                value={stats.overdue}
-                prefix={<WarningOutlined />}
-                valueStyle={{ color: "#fa8c16" }}
               />
             </Space>
 
@@ -105,10 +102,10 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
               <Segmented
                 options={[
                   { label: "Tất cả", value: "all" },
-                  { label: "Mới", value: "open" },
-                  { label: "Đang", value: "in_progress" },
-                  { label: "Giải quyết", value: "resolved" },
-                  { label: "Đã đóng", value: "closed" },
+                  { label: "Mới", value: "New" },
+                  { label: "Đang xử lý", value: "in_progress" },
+                  { label: "Đã giải quyết", value: "resolved" },
+                  { label: "Từ chối", value: "rejected" },
                 ]}
                 value={selectedStatus}
                 onChange={(v) => onStatusChange(String(v))}
