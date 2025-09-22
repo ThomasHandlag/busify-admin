@@ -5,20 +5,19 @@ import {
   Space,
   Typography,
   Button,
-  Badge,
   Row,
   Col,
 } from "antd";
 import type { MenuProps } from "antd";
 import {
   UserOutlined,
-  BellOutlined,
   SettingOutlined,
   LogoutOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
 } from "@ant-design/icons";
 import { useAuthStore } from "../stores/auth_store";
+import { NotificationBell } from "./NotificationBell";
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -51,52 +50,6 @@ const DashboardHeader = ({ collapsed, onCollapse }: DashboardHeaderProps) => {
       label: "Đăng xuất",
       onClick: auth.logOut,
       danger: true,
-    },
-  ];
-
-  const notificationMenuItems: MenuProps["items"] = [
-    {
-      key: "1",
-      label: (
-        <div style={{ padding: "8px 0" }}>
-          <Text strong>Người dùng mới đăng ký</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: "12px" }}>
-            2 phút trước
-          </Text>
-        </div>
-      ),
-    },
-    {
-      key: "2",
-      label: (
-        <div style={{ padding: "8px 0" }}>
-          <Text strong>Cập nhật tuyến xe</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: "12px" }}>
-            15 phút trước
-          </Text>
-        </div>
-      ),
-    },
-    {
-      key: "3",
-      label: (
-        <div style={{ padding: "8px 0" }}>
-          <Text strong>Báo cáo doanh thu mới</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: "12px" }}>
-            1 giờ trước
-          </Text>
-        </div>
-      ),
-    },
-    {
-      type: "divider",
-    },
-    {
-      key: "all",
-      label: "Xem tất cả thông báo",
     },
   ];
 
@@ -137,20 +90,7 @@ const DashboardHeader = ({ collapsed, onCollapse }: DashboardHeaderProps) => {
         <Col>
           <Space align="center" size="middle">
             {/* Notifications */}
-            <Dropdown
-              menu={{ items: notificationMenuItems }}
-              trigger={["click"]}
-              placement="bottomRight"
-              arrow
-            >
-              <Badge count={3} size="small">
-                <Button
-                  type="text"
-                  icon={<BellOutlined style={{ fontSize: "18px" }} />}
-                  style={{ border: "none", boxShadow: "none" }}
-                />
-              </Badge>
-            </Dropdown>
+            <NotificationBell />
 
             {/* User Profile Dropdown */}
             <Dropdown

@@ -99,10 +99,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
   const [isForOperator, setIsForOperator] = useState(false);
 
   // Use React Query to fetch seat layout
-  const {
-    isLoading: seatLayoutLoading,
-    isError: seatLayoutError,
-  } = useQuery({
+  const { isLoading: seatLayoutLoading, isError: seatLayoutError } = useQuery({
     queryKey: ["seatLayout", trip?.trip_id],
     queryFn: async () => {
       if (!trip?.trip_id) throw new Error("No trip ID");
