@@ -2,18 +2,21 @@ import type { NotificationInstance } from "antd/es/notification/interface";
 import { createContext, useContext } from "react";
 
 interface GNotifyContextType {
-    notify: NotificationInstance | null;
+  notify: NotificationInstance | null;
 }
 
 export const GNotifyContext = createContext<GNotifyContextType>({
-    notify: null,
+  notify: null,
 });
 
 export const useGNotify = () => {
-    const context = useContext(GNotifyContext);
-    if (!context) {
-        throw new Error("useGNotify must be used within a GNotifyProvider");
-    }
-    return context;
+  const context = useContext(GNotifyContext);
+  if (!context) {
+    throw new Error("useGNotify must be used within a GNotifyProvider");
+  }
+  return context;
 };
 
+// Export notification hooks
+export { useNotificationPolling } from "../../hooks/useNotificationPolling";
+export { useNotificationActions } from "../../hooks/useNotificationActions";

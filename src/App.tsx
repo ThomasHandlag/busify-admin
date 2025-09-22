@@ -1,18 +1,21 @@
 import useNotification from "antd/es/notification/useNotification";
 import "./App.css";
 import { GNotifyContext } from "./app/hooks";
-import { Outlet } from "react-router";
+import { Outlet } from "react-router-dom";
 import AppLayout from "./app/layouts/AppLayout";
+import { WebSocketProvider } from "./app/provider/WebSocketContext";
 
 function App() {
   const [api, contextHolder] = useNotification();
 
   return (
     <GNotifyContext.Provider value={{ notify: api }}>
-       <AppLayout>
-        <Outlet />
-      </AppLayout>
-      {contextHolder} 
+      <WebSocketProvider>
+        <AppLayout>
+          <Outlet />
+        </AppLayout>
+      </WebSocketProvider>
+      {contextHolder}
     </GNotifyContext.Provider>
   );
 }
