@@ -18,6 +18,7 @@ import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router";
 import { useAuthStore } from "../stores/auth_store";
 
 const { Header } = Layout;
@@ -30,12 +31,14 @@ interface DashboardHeaderProps {
 
 const DashboardHeader = ({ collapsed, onCollapse }: DashboardHeaderProps) => {
   const auth = useAuthStore();
+  const navigate = useNavigate();
 
   const userMenuItems: MenuProps["items"] = [
     {
       key: "profile",
       icon: <UserOutlined />,
       label: "Thông tin cá nhân",
+      onClick: () => navigate("/customer-service/profile"),
     },
     {
       key: "settings",

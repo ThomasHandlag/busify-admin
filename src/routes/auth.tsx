@@ -19,7 +19,7 @@ import BookingsWithCustomerService from "../features/bookings-mangement/pages/Bo
 import { DashboardWithCustomerService } from "../features/dashboard/pages/dashboardWithCustomerService";
 import Dashboard from "../features/dashboard/pages/dashboard";
 import { ChatWithCustomerServicePage } from "../features/chat/chatWithCustomerServicePage";
-
+import ProfilePage from "../features/profile/Profile";
 
 export function withRole(element: React.ReactNode, roles: string[]) {
   return <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
@@ -69,7 +69,11 @@ export const CustomerServiceRoute: RouteObject = {
     {
       path: "chat",
       element: <ChatWithCustomerServicePage />,
-    }
+    },
+    {
+      path: "profile",
+      element: withRole(<ProfilePage />, ["CUSTOMER_SERVICE", "ADMIN"]),
+    },
   ],
 };
 
