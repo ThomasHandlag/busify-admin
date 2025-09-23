@@ -236,7 +236,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
         </Tag>
       );
     }
-    if (trip.amenities.usb_charging) {
+    if (trip.amenities.charging) {
       amenities.push(
         <Tag key="usb" color={PALETTE.warning} style={{ margin: "2px" }}>
           <ThunderboltOutlined /> Sạc USB
@@ -442,7 +442,7 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
       open={visible}
       onClose={handleDrawerClose}
       width={900}
-      destroyOnClose={true}
+      destroyOnHidden={true}
       extra={
         <Space>
           <Dropdown overlay={emailMenu} trigger={["click"]}>
