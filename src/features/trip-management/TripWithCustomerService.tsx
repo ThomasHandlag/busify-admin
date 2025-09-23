@@ -116,6 +116,7 @@ const TripWithCustomerServicePage: React.FC = () => {
       }
 
       const response = await filterTrips(filterParams);
+      console.log("Filter API response:", response);
 
       if (response.code === 200) {
         let results = response.result;
