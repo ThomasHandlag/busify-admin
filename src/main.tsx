@@ -21,9 +21,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={AppRoute} />
-            <ReactQueryDevtools initialIsOpen={false} />
-
+      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
-
   </StrictMode>
 );

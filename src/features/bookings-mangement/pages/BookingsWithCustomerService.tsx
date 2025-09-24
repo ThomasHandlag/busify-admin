@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Card,
   Form,
@@ -12,13 +12,13 @@ import {
   Row,
   Col,
   Statistic,
-  Alert,
   Breadcrumb,
   Empty,
   Tooltip,
   message,
   Select,
   DatePicker,
+  Alert,
 } from "antd";
 import {
   SearchOutlined,
@@ -40,6 +40,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import BookingDetailModal from "../components/BookingDetailModal";
 import {
   searchBookings,
+  getAllBookingsForStats,
   type SearchBookingParams,
   type Booking,
 } from "../../../app/api/booking";
@@ -126,8 +127,79 @@ const BookingsWithCustomerService: React.FC = () => {
     },
   });
 
+  // Get statistics parameters (without page/size)
+  const getStatisticsParams = () => {
+    const formValues = form.getFieldsValue();
+    const { bookingCode, routeName, status, fromDate, toDate } = formValues;
+
+    const statsParams: Omit<SearchBookingParams, "page" | "size"> = {};
+    if (bookingCode) statsParams.bookingCode = bookingCode;
+    if (routeName) statsParams.route = routeName;
+    if (status) statsParams.status = status;
+    if (fromDate) statsParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
+    if (toDate) statsParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
+
+    return statsParams;
+  };
+
+  // TanStack Query for booking statistics (using large page size to get all data)
+  const { data: statisticsData, isLoading: isLoadingStats } = useQuery({
+    queryKey: ["booking-statistics", getStatisticsParams()],
+    queryFn: () => getAllBookingsForStats(getStatisticsParams()),
+    select: (data) => {
+      // Calculate statistics from the full dataset
+      const bookings = data?.result?.result || [];
+      return {
+        total: bookings.length,
+        confirmed: bookings.filter((b) => b.status === "confirmed").length,
+        pending: bookings.filter((b) => b.status === "pending").length,
+        cancelled: bookings.filter(
+          (b) =>
+            b.status === "canceled_by_user" ||
+            b.status === "canceled_by_operator" ||
+            b.status === "cancelled"
+        ).length,
+        completed: bookings.filter((b) => b.status === "completed").length,
+        totalRevenue: bookings.reduce(
+          (sum, booking) => sum + booking.total_amount,
+          0
+        ),
+      };
+    },
+  });
+
+  useEffect(() => {
+    if (isErrorBookings) {
+      console.error("Error loading bookings:", errorBookings);
+      message.error("Không thể tải danh sách đặt vé");
+    }
+  }, [isErrorBookings, errorBookings]);
+
+  // const searchResults = bookingsData?.result || [];
+  // const pagination = {
+  //   current: bookingsData?.result?.pageNumber || 1,
+  //   pageSize: bookingsData?.result?.pageSize || 10,
+  //   total: bookingsData?.result?.totalRecords || 0,
+  // };
+
+  // Extract data from query result
+
   const handleSearch = async (values: any) => {
-    searchMutation.mutate(values);
+    const { bookingCode, routeName, status, fromDate, toDate } = values;
+
+    const newSearchParams: SearchBookingParams = {
+      page: 1,
+      size: searchParams.size,
+    };
+
+    if (bookingCode) newSearchParams.bookingCode = bookingCode;
+    if (routeName) newSearchParams.route = routeName;
+    if (status) newSearchParams.status = status;
+    if (fromDate)
+      newSearchParams.startDate = dayjs(fromDate).format("YYYY-MM-DD");
+    if (toDate) newSearchParams.endDate = dayjs(toDate).format("YYYY-MM-DD");
+
+    setSearchParams(newSearchParams);
   };
 
   const handleReset = () => {
@@ -136,14 +208,21 @@ const BookingsWithCustomerService: React.FC = () => {
     setSearchParams({ page: 1, size: 10 });
   };
 
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (
+    paginationInfo: any,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    filters: any,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    sorter: any
+  ) => {
     const formValues = form.getFieldsValue();
     const { bookingCode, routeName, status, fromDate, toDate, sellingMethod } =
       formValues;
 
     const newSearchParams: SearchBookingParams = {
-      page: pagination.current,
-      size: pagination.pageSize,
+      page: paginationInfo.current,
+      size: paginationInfo.pageSize,
+
     };
 
     if (bookingCode) newSearchParams.bookingCode = bookingCode;
@@ -396,7 +475,7 @@ const BookingsWithCustomerService: React.FC = () => {
   };
 
   // Stats should be calculated only from current page data
-  const stats = {
+  const stats = statisticsData || {
     total: bookingItems.length,
     confirmed: bookingItems.filter((b) => b.status === "confirmed").length,
     pending: bookingItems.filter((b) => b.status === "pending").length,
@@ -404,6 +483,7 @@ const BookingsWithCustomerService: React.FC = () => {
       (sum, booking) => sum + booking.total_amount,
       0
     ),
+
   };
 
   // Combined loading state
@@ -529,6 +609,7 @@ const BookingsWithCustomerService: React.FC = () => {
                     htmlType="submit"
                     icon={<SearchOutlined />}
                     loading={searchMutation.isPending}
+
                   >
                     Tìm kiếm
                   </Button>
@@ -551,7 +632,7 @@ const BookingsWithCustomerService: React.FC = () => {
               value={pagination.total}
               prefix={<BookOutlined />}
               valueStyle={{ color: "#1890ff" }}
-              loading={isLoading}
+              loading={isLoadingStats}
             />
           </Card>
         </Col>
@@ -561,7 +642,7 @@ const BookingsWithCustomerService: React.FC = () => {
               title="Đã xác nhận"
               value={stats.confirmed}
               valueStyle={{ color: "#52c41a" }}
-              loading={isLoading}
+              loading={isLoadingStats}
             />
           </Card>
         </Col>
@@ -571,7 +652,7 @@ const BookingsWithCustomerService: React.FC = () => {
               title="Chờ xử lý"
               value={stats.pending}
               valueStyle={{ color: "#faad14" }}
-              loading={isLoading}
+              loading={isLoadingStats}
             />
           </Card>
         </Col>
@@ -583,7 +664,7 @@ const BookingsWithCustomerService: React.FC = () => {
               prefix={<DollarOutlined />}
               suffix="VNĐ"
               valueStyle={{ color: "#722ed1" }}
-              loading={isLoading}
+              loading={isLoadingStats}
             />
           </Card>
         </Col>

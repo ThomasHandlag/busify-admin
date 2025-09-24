@@ -1,0 +1,191 @@
+/* Role Management Styles */
+
+.role-management-container {
+  padding: 24px;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.role-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.role-card .ant-card-head {
+  border-bottom: 2px solid #f0f0f0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.role-card .ant-card-head-title {
+  color: white;
+  font-weight: 600;
+}
+
+.role-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 12px 12px 0 0;
+  margin: -24px -24px 24px -24px;
+}
+
+.role-header h3 {
+  color: white !important;
+  margin: 0;
+}
+
+.role-header .ant-typography {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.role-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  color: #262626;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.role-table .ant-table-tbody > tr:hover > td {
+  background: #f0f9ff;
+}
+
+.permission-group {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.permission-group h5 {
+  color: #1e40af;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.role-status-active {
+  background: #f0f9ff;
+  border: 1px solid #93c5fd;
+  color: #1e40af;
+}
+
+.role-status-inactive {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.role-status-banned {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+}
+
+.role-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.role-modal .ant-modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.role-modal .ant-modal-title {
+  color: white;
+}
+
+.role-stats-card {
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+}
+
+.role-stats-card .ant-statistic-title {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.role-stats-card .ant-statistic-content {
+  color: white;
+}
+
+/* Transfer Component Styling */
+.role-transfer .ant-transfer-list-header {
+  background: #f8fafc;
+  border-radius: 6px 6px 0 0;
+  font-weight: 600;
+}
+
+.role-transfer .ant-transfer-list-body {
+  border-radius: 0 0 6px 6px;
+}
+
+.role-transfer .ant-transfer-list-content-item {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
+}
+
+.role-transfer .ant-transfer-list-content-item:hover {
+  background: #f0f9ff;
+}
+
+.role-transfer .ant-transfer-list-content-item-checked {
+  background: #e6f3ff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .role-management-container {
+    padding: 16px;
+  }
+
+  .role-header {
+    padding: 16px;
+    margin: -16px -16px 16px -16px;
+  }
+
+  .role-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .role-transfer .ant-transfer {
+    flex-direction: column;
+  }
+
+  .role-transfer .ant-transfer-list {
+    width: 100% !important;
+    margin-bottom: 16px;
+  }
+}
+
+/* Animation */
+.role-card {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.role-tag-animate {
+  transition: all 0.3s ease;
+}
+
+.role-tag-animate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}

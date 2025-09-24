@@ -102,9 +102,26 @@ export const useSidebar = () => {
       case "revenue-analytics":
         navigate("/admin/revenue-analytics");
         break;
-
       case "chat-customer-service":
         navigate("/customer-service/chat");
+        break;
+      case "assign-roles":
+        navigate("/admin/assign-roles");
+        break;
+      case "manage-roles":
+        navigate("/admin/manage-roles");
+        break;
+      case "promotion-management":
+        navigate("/admin/promotion-management");
+        break;
+      case "permission-settings":
+        navigate("/admin/permission-settings");
+        break;
+      case "promotion-campaign-management":
+        navigate("/admin/promotion-campaign-management");
+        break;
+      case "log-management":
+        navigate("/admin/audit-logs");
         break;
       default:
         // Can add navigation for other keys here or use a dynamic approach

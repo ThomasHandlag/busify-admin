@@ -5,10 +5,10 @@ import {
   FileTextOutlined,
   DashboardOutlined,
   TruckOutlined,
-  SafetyCertificateOutlined,
   StarOutlined,
   FrownOutlined,
   MessageOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
 
 export interface AppMenuItem {
@@ -96,42 +96,25 @@ export const menuItems: AppMenuItem[] = [
   },
 
   {
-    key: "revenue-management",
+    key: "revenue-reports",
     icon: <DollarCircleOutlined />,
     label: "Theo dõi Doanh thu",
     roles: ["ADMIN"],
-    children: [
-      {
-        key: "revenue-reports",
-        label: "Báo cáo doanh thu",
-        roles: ["ADMIN"],
-      },
-      {
-        key: "revenue-analytics",
-        label: "Phân tích doanh thu",
-        roles: ["ADMIN"],
-      },
-    ],
   },
   {
-    key: "role-management",
-    icon: <SafetyCertificateOutlined />,
-    label: "Phân quyền Vai trò",
+    key: "promotion",
+    icon: <GiftOutlined />,
+    label: "Quản lý Khuyến mãi",
     roles: ["ADMIN"],
     children: [
       {
-        key: "assign-roles",
-        label: "Phân quyền",
+        key: "promotion-management",
+        label: "Danh sách Khuyến mãi",
         roles: ["ADMIN"],
       },
       {
-        key: "manage-roles",
-        label: "Quản lý vai trò",
-        roles: ["ADMIN"],
-      },
-      {
-        key: "permission-settings",
-        label: "Cài đặt quyền",
+        key: "promotion-campaign-management",
+        label: "Chiến Dịch Khuyến mãi",
         roles: ["ADMIN"],
       },
     ],
@@ -139,22 +122,8 @@ export const menuItems: AppMenuItem[] = [
   {
     key: "log-management",
     icon: <FileTextOutlined />,
-    roles: ["EMPLOYEE"],
+    roles: ["ADMIN"],
     label: "Quản lý Logs",
-    children: [
-      {
-        key: "view-logs",
-        label: "Xem logs",
-      },
-      {
-        key: "search-logs",
-        label: "Tìm kiếm logs",
-      },
-      {
-        key: "export-logs",
-        label: "Xuất logs",
-      },
-    ],
   },
   {
     type: "divider",
@@ -176,6 +145,12 @@ export const routeToKeyMap: Record<string, string> = {
   "/admin/contracts": "list-bus-operator",
   "/admin/revenue-reports": "revenue-reports",
   "/admin/revenue-analytics": "revenue-analytics",
+  "/admin/promotion-management": "promotion-management",
+  "/admin/promotion-campaign-management": "promotion-campaign-management",
+  "/admin/assign-roles": "assign-roles",
+  "/admin/manage-roles": "manage-roles",
+  "/admin/permission-settings": "permission-settings",
+  "/admin/audit-logs": "log-management",
   "/admin/tickets": "tickets-customer-service",
   "/admin/bookings": "bookings-customer-service",
   // customer service

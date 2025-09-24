@@ -14,21 +14,25 @@ const DashboardLayout = () => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: "100vh" }}>
       <Sidebar collapsed={collapsed} />
-      <Layout style={{
-        marginLeft: collapsed ? 80 : 280,
-        transition: 'margin-left 0.2s ease-in-out',
-        minHeight: '100vh'
-      }}>
+      <Layout
+        style={{
+          marginLeft: collapsed ? 80 : 280,
+          transition: "margin-left 0.2s ease-in-out",
+          minHeight: "100vh",
+        }}
+      >
         <DashboardHeader collapsed={collapsed} onCollapse={handleCollapse} />
-        <Content style={{ 
-          padding: '24px',
-          backgroundColor: '#f5f5f5',
-          overflow: 'auto',
-          minHeight: 'calc(100vh - 64px)' // Account for header height
-        }}>
-          <Outlet/>
+        <Content
+          style={{
+            padding: "24px",
+            backgroundColor: "#f5f5f5",
+            overflow: "auto",
+            minHeight: "calc(100vh - 64px)", // Account for header height
+          }}
+        >
+          <Outlet />
         </Content>
       </Layout>
     </Layout>
