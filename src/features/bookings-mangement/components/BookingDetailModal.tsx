@@ -25,17 +25,16 @@ import {
   UserOutlined,
   PhoneOutlined,
   MailOutlined,
-  EditOutlined,
   SaveOutlined,
   CreditCardOutlined,
   HomeOutlined,
-  DeleteOutlined,
+  GlobalOutlined,
+  ShopOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
   getBookingByCode,
   updateBooking,
-  deleteBooking,
   type Booking,
   type BookingDetailAPI,
   type UpdateBookingParams,
@@ -57,7 +56,6 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   visible,
   onClose,
   onUpdate,
-  onDelete,
 }) => {
   const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
@@ -177,47 +175,6 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     );
   };
 
-  const handleEdit = () => {
-    // Đảm bảo form được điền sẵn dữ liệu khi vào chế độ edit
-    if (bookingDetail) {
-      form.setFieldsValue({
-        guestFullName:
-          bookingDetail.guestFullName || bookingDetail.passenger_name || "",
-        guestEmail: bookingDetail.guestEmail || bookingDetail.email || "",
-        guestPhone: bookingDetail.guestPhone || bookingDetail.phone || "",
-        guestAddress: bookingDetail.guestAddress || bookingDetail.address || "",
-      });
-    }
-    setIsEditing(true);
-  };
-
-  const handleDeleteTicket = () => {
-    if (!booking) return;
-
-    Modal.confirm({
-      title: "Xác nhận hủy đặt vé",
-      content: `Bạn có chắc chắn muốn hủy đặt vé với mã ${booking.booking_code}? Hành động này không thể hoàn tác.`,
-      okText: "Xác nhận hủy",
-      okType: "danger",
-      cancelText: "Không",
-      onOk: async () => {
-        try {
-          await deleteBooking(booking.booking_code);
-          // Update local status so UI reflects cancellation immediately
-          // Use new enum value for operator-triggered cancellation
-          setBookingDetail((prev) =>
-            prev ? { ...prev, status: "canceled_by_operator" } : prev
-          );
-          message.success("Hủy đặt vé thành công");
-          onDelete?.(booking.booking_code);
-          onClose();
-        } catch (error) {
-          message.error("Không thể hủy đặt vé. Vui lòng thử lại." + error);
-        }
-      },
-    });
-  };
-
   const handleCancel = () => {
     setIsEditing(false);
     if (bookingDetail) {
@@ -270,20 +227,6 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     }
   };
 
-  // New: open mail modal and prefill form
-  const handleSendEmail = () => {
-    // Prefill common fields if available
-    mailForm.setFieldsValue({
-      toEmail: bookingDetail?.guestEmail || bookingDetail?.email || "",
-      userName:
-        bookingDetail?.guestFullName || bookingDetail?.passenger_name || "",
-      subject: `Thông tin đặt vé ${booking?.booking_code} - Busify`,
-      caseNumber: booking?.booking_code,
-      message: "", // keep empty for agent to edit
-    });
-    setIsMailModalVisible(true);
-  };
-
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {
       case "Credit Card":
@@ -321,21 +264,6 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           </Space>
         ) : (
           <Space key="view-actions">
-            <Button
-              key="delete"
-              danger
-              type="primary"
-              icon={<DeleteOutlined />}
-              onClick={handleDeleteTicket}
-            >
-              Hủy vé
-            </Button>
-            <Button icon={<EditOutlined />} onClick={handleEdit}>
-              Chỉnh sửa
-            </Button>
-            <Button icon={<MailOutlined />} onClick={handleSendEmail}>
-              Gửi email
-            </Button>
             <Button onClick={onClose}>Đóng</Button>
           </Space>
         ),
@@ -458,18 +386,6 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
               title="Thông tin khách hàng"
               size="small"
               style={{ marginBottom: "16px" }}
-              extra={
-                !isEditing && (
-                  <Button
-                    type="link"
-                    icon={<EditOutlined />}
-                    onClick={handleEdit}
-                    size="small"
-                  >
-                    Chỉnh sửa
-                  </Button>
-                )
-              }
             >
               {isEditing ? (
                 <Form
@@ -619,6 +535,19 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                     )}
                     {bookingDetail.payment_info?.method ||
                       booking.payment_method}
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Phương thức bán">
+                  <Space>
+                    {(bookingDetail?.selling_method ||
+                      booking.selling_method) === "ONLINE" ? (
+                      <GlobalOutlined />
+                    ) : (
+                      <ShopOutlined />
+                    )}
+                    {bookingDetail?.selling_method ||
+                      booking.selling_method ||
+                      "N/A"}
                   </Space>
                 </Descriptions.Item>
                 <Descriptions.Item label="Thời gian thanh toán">

@@ -120,6 +120,9 @@ export const useSidebar = () => {
       case "promotion-campaign-management":
         navigate("/admin/promotion-campaign-management");
         break;
+      case "log-management":
+        navigate("/admin/audit-logs");
+        break;
       default:
         // Can add navigation for other keys here or use a dynamic approach
         console.log("Navigate to:", key);

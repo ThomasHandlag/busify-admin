@@ -14,6 +14,9 @@ import RoleManagementDemo from "../features/role-management/RoleManagementDemo";
 import { PromotionManagement } from "../features/promotion-management";
 import PromotionCampaignManagement from "../features/promotion-campaign-management/pages/PromotionCampaignManagement";
 
+// Audit Log Management
+import AuditLogManagement from "../features/audit-log/pages/AuditLogManagement";
+
 // Customer Service pages
 import TicketWithCustomerServicePage from "../features/ticket-management/pages/TicketWithCustomerServicePage";
 import TripWithCustomerServicePage from "../features/trip-management/TripWithCustomerService";
@@ -135,6 +138,11 @@ export const AuthRoute: RouteObject = {
     {
       path: "role-demo",
       element: withRole(<RoleManagementDemo />, ["ADMIN"]),
+    },
+    // Audit Log Management
+    {
+      path: "audit-logs",
+      element: withRole(<AuditLogManagement />, ["ADMIN"]),
     },
     // Admin có thể access Customer Service functions
     {

@@ -96,23 +96,29 @@ const PromotionCampaignForm: React.FC<PromotionCampaignFormProps> = ({
           console.log("Extracting promotion IDs from backend data");
           // Extract promotion IDs and create CampaignPromotionData format for display
           const existingPromotions: CampaignPromotionData[] =
-            editingCampaign.promotions.map((promotion) => ({
-              tempId: `existing-${promotion.id}`,
-              promotionId: promotion.id,
-              code: promotion.code,
-              isExisting: true,
-              discountType: promotion.discountType as
-                | "PERCENTAGE"
-                | "FIXED_AMOUNT",
-              promotionType: promotion.promotionType as "auto" | "coupon",
-              discountValue: promotion.discountValue,
-              status: promotion.status as "active" | "inactive" | "expired",
-              minOrderValue: promotion.minOrderValue,
-              usageLimit: promotion.usageLimit,
-              startDate: promotion.startDate,
-              endDate: promotion.endDate,
-            }));
+            editingCampaign.promotions
+              .filter((promotion) => promotion.id) // Filter out promotions without ID
+              .map((promotion) => {
+                console.log("Processing backend promotion:", promotion);
+                return {
+                  tempId: `existing-${promotion.id}`,
+                  promotionId: promotion.id,
+                  code: promotion.code || null,
+                  isExisting: true,
+                  discountType: promotion.discountType as
+                    | "PERCENTAGE"
+                    | "FIXED_AMOUNT",
+                  promotionType: promotion.promotionType as "auto" | "coupon",
+                  discountValue: promotion.discountValue,
+                  status: promotion.status as "active" | "inactive" | "expired",
+                  minOrderValue: promotion.minOrderValue || undefined,
+                  usageLimit: promotion.usageLimit || undefined,
+                  startDate: promotion.startDate,
+                  endDate: promotion.endDate,
+                };
+              });
 
+          console.log("Processed existing promotions:", existingPromotions);
           setPromotions(existingPromotions);
         } else {
           console.log("No promotions found, setting empty array");
@@ -152,12 +158,30 @@ const PromotionCampaignForm: React.FC<PromotionCampaignFormProps> = ({
 
       // Add promotions if any (remove tempId for API)
       if (promotions.length > 0) {
+        console.log("Current promotions state:", promotions);
+
+        // Separate new promotions and existing promotions
+        const newPromotions = promotions.filter((p) => !p.isExisting);
+        const existingPromotions = promotions.filter((p) => p.isExisting);
+
+        console.log("New promotions:", newPromotions);
+        console.log("Existing promotions:", existingPromotions);
+
         campaignData.promotions = promotions.map((promotion) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { tempId, ...promotionData } = promotion;
+          console.log("Processing promotion:", promotionData);
           return promotionData;
         });
+
+        console.log("Final promotions data to send:", campaignData.promotions);
+      } else {
+        console.log("No promotions to send");
+        // Explicitly set to empty array to clear all promotions
+        campaignData.promotions = [];
       }
+
+      console.log("Submitting campaign data:", campaignData);
 
       await onSubmit(campaignData);
       form.resetFields();
@@ -165,6 +189,14 @@ const PromotionCampaignForm: React.FC<PromotionCampaignFormProps> = ({
       setPromotions([]);
     } catch (error) {
       console.error("Form validation failed:", error);
+      // If it's an API error, don't clear the form so user can retry
+      if (
+        error instanceof Error &&
+        error.message.includes("Promotion not found")
+      ) {
+        console.error("Promotion validation error:", error.message);
+        // Could show specific error message to user here
+      }
     }
   };
 

@@ -29,7 +29,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const navigate = useNavigate();
   const { isConnected } = useWebSocket();
 
-  // Only show the 3 most recent chat sessions
+  // Chỉ hiển thị 3 cuộc trò chuyện gần đây nhất
   const recentSessions = chatSessions.slice(0, 3);
 
   const handleReply = (chatId: string) => {
@@ -122,7 +122,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                           {item.customerName}
                         </Typography.Text>
                       </div>
-                      {item.unreadCount && item.unreadCount > 0 && (
+                      {(item.unreadCount ?? 0) > 0 && (
                         <Badge count={item.unreadCount} size="small" />
                       )}
                     </div>
