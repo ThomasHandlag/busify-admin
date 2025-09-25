@@ -245,7 +245,7 @@ class WebSocketService {
 
   // Subscribe to personal notifications
   private subscribeToNotifications(): void {
-    if (!this.client || !this.connected || !this.userEmail) return;
+    if (!this.client || !this.client.connected || !this.userEmail) return;
 
     // Unsubscribe if already subscribed
     if (this.notificationSubscription) {
