@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import {
   Modal,
@@ -34,7 +32,7 @@ import {
 const { Text, Paragraph } = Typography;
 
 interface ComplaintDetailModalProps {
-  complaint: any;
+  complaint: ComplaintDetail | null;
   visible: boolean;
   onClose: () => void;
 }
@@ -51,6 +49,13 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
   useEffect(() => {
     const fetchComplaintDetail = async () => {
       if (complaint && visible) {
+        // If we already have the full details, use them directly
+        if (complaint.customer && complaint.booking) {
+          setComplaintDetail(complaint);
+          return;
+        }
+
+        // Otherwise, fetch the full details
         setDetailLoading(true);
         try {
           const response = await getComplaintById(complaint.id);

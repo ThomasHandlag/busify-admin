@@ -49,6 +49,21 @@ export interface ComplaintResponse {
   };
 }
 
+export interface ComplaintPageResponseDTO {
+  complaints: ComplaintDetail[];
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+export interface ComplaintPageResponse {
+  code: number;
+  message: string;
+  result: ComplaintPageResponseDTO;
+}
+
 export interface ComplaintDetailResponse {
   code: number;
   message: string;
@@ -61,6 +76,34 @@ export interface ComplaintDetailListResponse {
   result: ComplaintDetail[];
 }
 
+export interface ComplaintStats {
+  New: number;
+  pending: number;
+  in_progress: number;
+  resolved: number;
+  rejected: number;
+}
+
+export interface ComplaintStatsResponse {
+  code: number;
+  message: string;
+  result: ComplaintStats;
+}
+
+export interface DailyComplaintStats {
+  newCount: number;
+  pendingCount: number;
+  inProgressCount: number;
+  resolvedCount: number;
+  rejectedCount: number;
+}
+
+export interface DailyComplaintStatsResponse {
+  code: number;
+  message: string;
+  result: DailyComplaintStats;
+}
+
 export interface UpdateComplaintParams {
   title?: string;
   description?: string;
@@ -68,9 +111,19 @@ export interface UpdateComplaintParams {
   assignedAgentId?: number;
 }
 
-export const getAllComplaints = async (): Promise<ComplaintResponse> => {
+export interface GetComplaintsParams {
+  page?: number;
+  size?: number;
+}
+
+export const getAllComplaints = async (
+  params: GetComplaintsParams = {}
+): Promise<ComplaintPageResponse> => {
   try {
-    const response = await apiClient.get("api/complaints");
+    const { page = 0, size = 10 } = params;
+    const response = await apiClient.get("api/complaints", {
+      params: { page, size },
+    });
     return response.data;
   } catch (error) {
     throw new Error("Không thể lấy danh sách khiếu nại" + error);
@@ -103,17 +156,33 @@ export const updateComplaint = async (
   }
 };
 
-export const getComplaintByAgent =
-  async (): Promise<ComplaintDetailListResponse> => {
-    try {
-      const response = await apiClient.get(`api/complaints/agent/in-progress`);
-      return response.data;
-    } catch (error) {
-      throw new Error(
-        "Không thể lấy danh sách khiếu nại theo nhân viên" + error
-      );
-    }
-  };
+export const getComplaintByAgent = async (
+  params: GetComplaintsParams = {}
+): Promise<ComplaintPageResponse> => {
+  try {
+    const { page = 0, size = 10 } = params;
+    const response = await apiClient.get(`api/complaints/agent`, {
+      params: { page, size },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error("Không thể lấy danh sách khiếu nại theo nhân viên" + error);
+  }
+};
+
+export const getInProgressComplaintsByAgent = async (
+  params: GetComplaintsParams = {}
+): Promise<ComplaintPageResponse> => {
+  try {
+    const { page = 0, size = 10 } = params;
+    const response = await apiClient.get(`api/complaints/agent/in-progress`, {
+      params: { page, size },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error("Không thể lấy danh sách khiếu nại đang xử lý" + error);
+  }
+};
 
 export const updateComplaintStatus = async (
   complaintId: number,
@@ -129,3 +198,24 @@ export const updateComplaintStatus = async (
     throw new Error("Không thể cập nhật trạng thái khiếu nại" + error);
   }
 };
+
+export const getComplaintStatsForCurrentAgent =
+  async (): Promise<ComplaintStatsResponse> => {
+    try {
+      const response = await apiClient.get("api/complaints/agent/stats");
+      return response.data;
+    } catch (error) {
+      throw new Error("Không thể lấy thống kê khiếu nại" + error);
+    }
+  };
+
+export const getDailyComplaintStatsForCurrentAgent =
+  async (): Promise<DailyComplaintStatsResponse> => {
+    try {
+      const response = await apiClient.get("api/complaints/agent/daily-stats");
+      console.log(response.data);
+      return response.data;
+    } catch (error) {
+      throw new Error("Không thể lấy thống kê khiếu nại hàng ngày" + error);
+    }
+  };

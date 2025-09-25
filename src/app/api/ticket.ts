@@ -55,7 +55,15 @@ export interface TicketDetail {
 export interface TicketResponse {
   code: number;
   message: string;
-  result: { tickets: Ticket }[];
+  result: {
+    content: { tickets: Ticket }[]; // Changed from Ticket[] to adapt to the new response structure
+    totalPages: number;
+    totalElements: number;
+    pageable: {
+      pageNumber: number;
+      pageSize: number;
+    };
+  };
 }
 
 export interface TicketDetailResponse {
@@ -70,9 +78,14 @@ export interface TicketSearchParams {
   phone?: string;
 }
 
-export const getAllTickets = async (): Promise<TicketResponse> => {
+export const getAllTickets = async (
+  page: number = 0,
+  size: number = 10
+): Promise<TicketResponse> => {
   try {
-    const response = await apiClient.get("api/tickets");
+    const response = await apiClient.get(
+      `api/tickets?page=${page}&size=${size}`
+    );
     return response.data;
   } catch (error) {
     throw new Error("Không thể lấy danh sách vé" + error);
@@ -80,13 +93,15 @@ export const getAllTickets = async (): Promise<TicketResponse> => {
 };
 
 export const searchTickets = async (
-  params: TicketSearchParams
+  params: TicketSearchParams & { page?: number; size?: number }
 ): Promise<TicketResponse> => {
   try {
     const searchParams = new URLSearchParams();
     if (params.ticketCode) searchParams.append("ticketCode", params.ticketCode);
     if (params.name) searchParams.append("name", params.name);
     if (params.phone) searchParams.append("phone", params.phone);
+    searchParams.append("page", String(params.page ?? 0));
+    searchParams.append("size", String(params.size ?? 10));
 
     const response = await apiClient.get(
       `api/tickets/search?${searchParams.toString()}`
@@ -107,7 +122,6 @@ export const getTicketByCode = async (
     throw new Error("Không thể lấy thông tin chi tiết vé" + error);
   }
 };
-
 
 // delete ticket
 export const deleteTicket = async (ticketCode: string): Promise<boolean> => {

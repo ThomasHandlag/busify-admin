@@ -29,6 +29,7 @@ interface Review {
   reviewId: number;
   rating: number;
   customerName: string;
+  customerEmail: string;
   comment: string;
   createdAt: string;
 }
@@ -55,7 +56,7 @@ const ReviewDetailModal: React.FC<ReviewDetailModalProps> = ({
 
   const handleSendEmail = () => {
     mailForm.setFieldsValue({
-      toEmail: "", // No email in Review interface; set to empty or fetch if available
+      toEmail: review.customerEmail,
       userName: review.customerName,
       subject: `Thông tin đánh giá ${review.reviewId} - Busify`,
       caseNumber: review.reviewId.toString(),

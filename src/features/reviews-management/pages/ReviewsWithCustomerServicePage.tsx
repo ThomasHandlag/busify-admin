@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Card,
   Form,
@@ -32,9 +32,11 @@ import {
   ClearOutlined,
   MessageOutlined,
   FilterOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import type { TableProps } from "antd";
 import dayjs from "dayjs";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ReviewDetailModal from "../components/ReviewDetailModal";
 import {
   getAllReviews,
@@ -43,6 +45,7 @@ import {
   type Review,
   type ReviewFilterParams,
   type ReviewSearchParams,
+  type ReviewResponse,
 } from "../../../app/api/review";
 
 const { Title, Text } = Typography;
@@ -51,53 +54,64 @@ const { RangePicker } = DatePicker;
 const { TabPane } = Tabs;
 
 const ReviewsWithCustomerServicePage: React.FC = () => {
+  const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [searchResults, setSearchResults] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("filter");
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
-  // Load all reviews on component mount
-  useEffect(() => {
-    loadAllReviews();
-  }, []);
-
-  const loadAllReviews = async () => {
-    setLoading(true);
-    try {
-      const response = await getAllReviews();
+  // Truy vấn để tải tất cả các đánh giá
+  const {
+    data: reviewsData,
+    isLoading: isLoadingReviews,
+    isError: isErrorReviews,
+    error: errorReviews,
+  } = useQuery({
+    queryKey: ["reviews", pagination.current, pagination.pageSize],
+    queryFn: async (): Promise<ReviewResponse["result"]> => {
+      const response = await getAllReviews({
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      });
       if (response.code === 200) {
-        setReviews(response.result.reviews);
-        setSearchResults(response.result.reviews);
+        setPagination((prev) => ({
+          ...prev,
+          total: response.result.totalElements,
+        }));
+        return response.result;
       }
-    } catch (error) {
-      message.error("Không thể tải danh sách đánh giá");
-      console.error("Error loading reviews:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return {
+        reviews: [],
+        currentPage: 0,
+        totalPages: 0,
+        totalElements: 0,
+        pageSize: 10,
+        hasNext: false,
+        hasPrevious: false,
+      };
+    },
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+  });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleFilter = async (values: any) => {
-    const { rating, ratingRange, dateRange, customerName } = values;
-
-    setLoading(true);
-    setHasSearched(true);
-
-    try {
+  // Mutation cho chức năng lọc đánh giá
+  const filterMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const { rating, ratingRange, dateRange, customerName } = values;
       const filterParams: ReviewFilterParams = {};
 
-      // Add exact rating filter
+      // Xử lý lọc theo rating cụ thể
       if (rating) {
         filterParams.rating = rating;
       }
 
-      // Add rating range filter
+      // Xử lý lọc theo khoảng rating
       if (ratingRange && ratingRange.length === 2) {
         const [minRating, maxRating] = ratingRange.sort(
           (a: number, b: number) => a - b
@@ -106,56 +120,61 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
         filterParams.maxRating = maxRating;
       }
 
-      // Add date range filter
+      // Xử lý lọc theo khoảng thời gian
       if (dateRange && dateRange.length === 2) {
         const [startDate, endDate] = dateRange;
         filterParams.startDate = startDate.format("YYYY-MM-DD");
         filterParams.endDate = endDate.format("YYYY-MM-DD");
       }
 
-      const response = await filterReviews(filterParams);
+      const response = await filterReviews({
+        ...filterParams,
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      });
+      const results = response.result;
 
-      if (response.code === 200) {
-        let results = response.result.reviews;
-
-        // Apply client-side customer name filter if provided
-        if (customerName) {
-          results = results.filter((review) =>
-            review.customerName
-              .toLowerCase()
-              .includes(customerName.toLowerCase())
-          );
-        }
-
-        setSearchResults(results);
-
-        if (results.length === 0) {
-          message.info("Không tìm thấy đánh giá phù hợp");
-        } else {
-          message.success(`Tìm thấy ${results.length} đánh giá`);
-        }
+      // Lọc theo tên khách hàng ở phía client (nếu có)
+      if (customerName) {
+        results.reviews = results.reviews.filter((review) =>
+          review.customerName.toLowerCase().includes(customerName.toLowerCase())
+        );
       }
-    } catch (error) {
-      message.error("Lỗi khi lọc đánh giá");
-      console.error("Filter error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // New search function
-  const handleSearch = async (values: any) => {
-    const { customerName, comment } = values;
+      return results;
+    },
+    onSuccess: (data) => {
+      // Cập nhật cache với kết quả lọc
+      queryClient.setQueryData(["reviews", "filtered"], data.reviews);
+      setPagination((prev) => ({
+        ...prev,
+        total: data.totalElements,
+        current: data.currentPage + 1,
+      }));
 
-    if (!customerName && !comment) {
-      message.warning("Vui lòng nhập ít nhất một từ khóa để tìm kiếm");
-      return;
-    }
+      if (data.reviews.length === 0) {
+        message.info("Không tìm thấy đánh giá phù hợp");
+      } else {
+        message.success(`Tìm thấy ${data.totalElements} đánh giá`);
+      }
 
-    setLoading(true);
-    setHasSearched(true);
+      setHasSearched(true);
+    },
+    onError: (error: Error) => {
+      message.error(`Lỗi khi lọc đánh giá: ${error.message}`);
+      queryClient.setQueryData(["reviews", "filtered"], []);
+    },
+  });
 
-    try {
+  // Mutation cho chức năng tìm kiếm đánh giá
+  const searchMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const { customerName, comment } = values;
+
+      if (!customerName && !comment) {
+        throw new Error("Vui lòng nhập ít nhất một từ khóa để tìm kiếm");
+      }
+
       const searchParams: ReviewSearchParams = {};
 
       if (customerName) {
@@ -166,31 +185,72 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
         searchParams.comment = comment;
       }
 
-      const response = await searchReviews(searchParams);
+      const response = await searchReviews({
+        ...searchParams,
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      });
+      return response.result;
+    },
+    onSuccess: (data) => {
+      // Cập nhật cache với kết quả tìm kiếm
+      queryClient.setQueryData(["reviews", "filtered"], data.reviews);
+      setPagination((prev) => ({
+        ...prev,
+        total: data.totalElements,
+        current: data.currentPage + 1,
+      }));
 
-      if (response.code === 200) {
-        const results = response.result.reviews;
-        setSearchResults(results);
-
-        if (results.length === 0) {
-          message.info("Không tìm thấy đánh giá phù hợp với từ khóa tìm kiếm");
-        } else {
-          message.success(`Tìm thấy ${results.length} đánh giá phù hợp`);
-        }
+      if (data.reviews.length === 0) {
+        message.info("Không tìm thấy đánh giá phù hợp với từ khóa tìm kiếm");
+      } else {
+        message.success(`Tìm thấy ${data.totalElements} đánh giá phù hợp`);
       }
-    } catch (error) {
-      message.error("Lỗi khi tìm kiếm đánh giá");
-      console.error("Search error:", error);
-    } finally {
-      setLoading(false);
-    }
+
+      setHasSearched(true);
+    },
+    onError: (error: Error) => {
+      if (error.message.includes("Vui lòng nhập")) {
+        message.warning(error.message);
+      } else {
+        message.error(`Lỗi khi tìm kiếm đánh giá: ${error.message}`);
+        queryClient.setQueryData(["reviews", "filtered"], []);
+      }
+    },
+  });
+
+  const handleFilter = (values: any) => {
+    setPagination((prev) => ({ ...prev, current: 1 }));
+    filterMutation.mutate(values);
+  };
+
+  const handleSearch = (values: any) => {
+    setPagination((prev) => ({ ...prev, current: 1 }));
+    searchMutation.mutate(values);
   };
 
   const handleReset = () => {
     form.resetFields();
     searchForm.resetFields();
-    setSearchResults(reviews);
     setHasSearched(false);
+    setPagination({ current: 1, pageSize: 10, total: 0 });
+    queryClient.removeQueries({ queryKey: ["reviews", "filtered"] });
+    queryClient.invalidateQueries({ queryKey: ["reviews"] });
+  };
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({
+      queryKey: ["reviews", pagination.current, pagination.pageSize],
+    });
+    if (hasSearched) {
+      // Nếu đã tìm kiếm trước đó, thực hiện lại hành động tìm kiếm hoặc lọc
+      if (activeTab === "search") {
+        searchMutation.mutate(searchForm.getFieldsValue());
+      } else {
+        filterMutation.mutate(form.getFieldsValue());
+      }
+    }
+    message.success("Đang làm mới dữ liệu...");
   };
 
   const handleViewDetail = (review: Review) => {
@@ -295,19 +355,44 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
     },
   ];
 
+  // Quyết định dữ liệu nào hiển thị dựa trên trạng thái tìm kiếm
+  const displayReviews = hasSearched
+    ? queryClient.getQueryData<Review[]>(["reviews", "filtered"]) || []
+    : reviewsData?.reviews || [];
+
+  // Tính toán thống kê dựa trên dữ liệu hiển thị hiện tại
   const stats = {
-    total: searchResults.length,
-    excellent: searchResults.filter((r) => r.rating === 5).length,
-    good: searchResults.filter((r) => r.rating === 4).length,
-    average: searchResults.filter((r) => r.rating === 3).length,
-    poor: searchResults.filter((r) => r.rating <= 2).length,
+    total: displayReviews.length,
+    excellent: displayReviews.filter((r) => r.rating === 5).length,
+    good: displayReviews.filter((r) => r.rating === 4).length,
+    average: displayReviews.filter((r) => r.rating === 3).length,
+    poor: displayReviews.filter((r) => r.rating <= 2).length,
     averageRating:
-      searchResults.length > 0
+      displayReviews.length > 0
         ? (
-            searchResults.reduce((sum, r) => sum + r.rating, 0) /
-            searchResults.length
+            displayReviews.reduce((sum, r) => sum + r.rating, 0) /
+            displayReviews.length
           ).toFixed(1)
         : "0.0",
+  };
+
+  // Trạng thái loading tổng hợp
+  const isLoading =
+    isLoadingReviews || filterMutation.isPending || searchMutation.isPending;
+
+  const handleTableChange = (newPagination: any) => {
+    setPagination({
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
+      total: newPagination.total,
+    });
+    if (hasSearched) {
+      if (activeTab === "search") {
+        searchMutation.mutate(searchForm.getFieldsValue());
+      } else {
+        filterMutation.mutate(form.getFieldsValue());
+      }
+    }
   };
 
   return (
@@ -324,9 +409,38 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
         ]}
       />
 
-      <Title level={2} style={{ marginBottom: "24px" }}>
-        <StarOutlined /> Quản lý đánh giá khách hàng
-      </Title>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "24px",
+        }}
+      >
+        <Title level={2} style={{ margin: 0 }}>
+          <StarOutlined /> Quản lý đánh giá khách hàng
+        </Title>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={handleRefresh}
+          loading={isLoading}
+        >
+          Làm mới
+        </Button>
+      </div>
+
+      {/* Hiển thị lỗi nếu có */}
+      {isErrorReviews && (
+        <Alert
+          message="Lỗi tải dữ liệu"
+          description={
+            errorReviews?.message || "Không thể tải danh sách đánh giá"
+          }
+          type="error"
+          showIcon
+          style={{ marginBottom: "16px" }}
+        />
+      )}
 
       {/* Search and Filter Tabs */}
       <Card style={{ marginBottom: "24px" }}>
@@ -370,7 +484,7 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
                         type="primary"
                         htmlType="submit"
                         icon={<SearchOutlined />}
-                        loading={loading}
+                        loading={searchMutation.isPending}
                       >
                         Tìm kiếm
                       </Button>
@@ -451,7 +565,7 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
                       type="primary"
                       htmlType="submit"
                       icon={<FilterOutlined />}
-                      loading={loading}
+                      loading={filterMutation.isPending}
                     >
                       Lọc đánh giá
                     </Button>
@@ -528,13 +642,13 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
 
       {/* Results Table */}
       <Card>
-        {searchResults.length === 0 ? (
+        {displayReviews.length === 0 && !isLoading ? (
           <Empty description="Không có đánh giá nào" />
         ) : (
           <>
             {hasSearched && (
               <Alert
-                message={`Tìm thấy ${searchResults.length} đánh giá phù hợp${
+                message={`Tìm thấy ${displayReviews.length} đánh giá phù hợp${
                   activeTab === "search"
                     ? " với từ khóa tìm kiếm"
                     : " với bộ lọc"
@@ -546,7 +660,7 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
             )}
             {!hasSearched && (
               <Alert
-                message={`Hiển thị tất cả ${searchResults.length} đánh giá trong hệ thống`}
+                message={`Hiển thị tất cả ${displayReviews.length} đánh giá trong hệ thống`}
                 type="info"
                 showIcon
                 style={{ marginBottom: "16px" }}
@@ -554,17 +668,22 @@ const ReviewsWithCustomerServicePage: React.FC = () => {
             )}
             <Table
               columns={columns}
-              dataSource={searchResults}
+              dataSource={displayReviews}
               rowKey="reviewId"
-              loading={loading}
+              loading={isLoading}
               scroll={{ x: 1000 }}
               pagination={{
-                pageSize: 10,
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: hasSearched
+                  ? pagination.total
+                  : reviewsData?.totalElements,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) =>
                   `${range[0]}-${range[1]} của ${total} đánh giá`,
               }}
+              onChange={handleTableChange}
             />
           </>
         )}
