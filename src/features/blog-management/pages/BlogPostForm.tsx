@@ -194,7 +194,6 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ editMode = false }) => {
 
   const handleEditorImageUpload = async (
     blobInfo: BlobInfo,
-    _progress: (percent: number) => void
   ) => {
     // This is a placeholder for image upload functionality
     // In a real application, you would upload the image to your server or cloud storage
@@ -208,7 +207,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ editMode = false }) => {
           resolve(dataUrl);
         };
         reader.readAsDataURL(blobInfo.blob());
-      } catch (_error) {
+      } catch (e) {
+        console.error("Image upload failed:", e);
         reject("Image upload failed");
       }
     });
@@ -322,7 +322,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ editMode = false }) => {
             <Editor
               apiKey="ihi0luk0eydsmetb1pogrw9yc763goyeua3658cczv8gn8u5"
               initialValue={initialContent}
-              onInit={(_evt: any, editor: TinyMCEEditor) => {
+              onInit={(_evt: unknown, editor: TinyMCEEditor) => {
                 editorRef.current = editor;
                 // Set content when editor initializes if we have content
                 if (initialContent && editor) {

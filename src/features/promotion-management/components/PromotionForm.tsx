@@ -28,6 +28,7 @@ import {
   type PromotionRequestDTO,
   type PromotionResponseDTO,
 } from "../../../app/api/promotion";
+import PromotionConditionsForm from "./PromotionConditionsForm";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -71,6 +72,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
             dayjs(editingPromotion.endDate),
           ],
           isActive: isActiveValue,
+          conditions: editingPromotion.conditions || [],
         });
 
         setDiscountType(editingPromotion.discountType);
@@ -107,7 +109,10 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         status: values.isActive
           ? PromotionStatus.ACTIVE
           : PromotionStatus.INACTIVE,
+        conditions: values.conditions || [],
       };
+
+      console.log("promotion data", promotionData);
 
       await onSubmit(promotionData);
       form.resetFields();
@@ -146,7 +151,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
           {editingPromotion ? "Cập nhật" : "Tạo mới"}
         </Button>,
       ]}
-      width={800}
+      width={1000}
       destroyOnClose
     >
       <Form
@@ -386,6 +391,18 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
               <Switch />
             </Form.Item>
             <Text style={{ marginLeft: 8 }}>Kích hoạt ngay sau khi tạo</Text>
+          </Col>
+        </Row>
+
+        <Divider orientation="left">
+          <Text strong>Điều kiện khuyến mãi (Tùy chọn)</Text>
+        </Divider>
+
+        <Row>
+          <Col span={24}>
+            <Form.Item name="conditions">
+              <PromotionConditionsForm />
+            </Form.Item>
           </Col>
         </Row>
       </Form>

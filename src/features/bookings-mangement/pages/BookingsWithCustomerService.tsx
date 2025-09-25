@@ -150,13 +150,7 @@ const BookingsWithCustomerService: React.FC = () => {
     });
   };
 
-  const handleTableChange = (
-    paginationInfo: any,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    filters: any,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    sorter: any
-  ) => {
+  const handleTableChange = (paginationInfo: any) => {
     const formValues = form.getFieldsValue();
     const { bookingCode, routeName, status, fromDate, toDate } = formValues;
 
