@@ -128,7 +128,7 @@ export const DashboardWithCustomerService = () => {
     handleChatNotification,
   ]);
 
-  const filteredTickets = complaints.filter((ticket) => {
+  const filteredTickets = complaints?.filter((ticket) => {
     const matchesStatus =
       selectedStatus === "all" || ticket.status === selectedStatus;
     const matchesSearch =
@@ -142,9 +142,9 @@ export const DashboardWithCustomerService = () => {
   });
 
   const stats = {
-    totalOpen: complaints.filter((t) => t.status === "open").length,
-    inProgress: complaints.filter((t) => t.status === "in_progress").length,
-    resolvedToday: complaints.filter(
+    totalOpen: complaints?.filter((t) => t.status === "open").length,
+    inProgress: complaints?.filter((t) => t.status === "in_progress").length,
+    resolvedToday: complaints?.filter(
       (t) =>
         t.status === "resolved" && dayjs(t.updatedAt).isSame(dayjs(), "day")
     ).length,
