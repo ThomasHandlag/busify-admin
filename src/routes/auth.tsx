@@ -1,4 +1,9 @@
+import React from "react";
 import type { RouteObject } from "react-router";
+// Blog Management Components
+import BlogPostsPage from "../features/blog-management/pages/BlogPostsPage";
+import BlogPostForm from "../features/blog-management/pages/BlogPostForm";
+import BlogPostPreview from "../features/blog-management/pages/BlogPostPreview";
 import DashboardLayout from "../app/layouts/DashboardLayout";
 import UserManagement from "../features/user-management/user";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -29,6 +34,7 @@ import PermissionSettingsPage from "../features/role-management/pages/Permission
 import { DashboardWithCustomerService } from "../features/dashboard/pages/dashboardWithCustomerService";
 import Dashboard from "../features/dashboard/pages/dashboard";
 import { ChatWithCustomerServicePage } from "../features/chat/chatWithCustomerServicePage";
+import ProfilePage from "../features/profile/Profile";
 
 export function withRole(element: React.ReactNode, roles: string[]) {
   return <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
@@ -78,6 +84,10 @@ export const CustomerServiceRoute: RouteObject = {
     {
       path: "chat",
       element: <ChatWithCustomerServicePage />,
+    },
+    {
+      path: "profile",
+      element: withRole(<ProfilePage />, ["CUSTOMER_SERVICE", "ADMIN"]),
     },
   ],
 };
@@ -152,6 +162,43 @@ export const AuthRoute: RouteObject = {
     {
       path: "bookings",
       element: withRole(<BookingsWithCustomerService />, ["ADMIN"]),
+    },
+    // Blog Management Routes
+    {
+      path: "blog-posts",
+      element: withRole(
+        <React.Suspense fallback={<div>Loading...</div>}>
+          <BlogPostsPage />
+        </React.Suspense>,
+        ["ADMIN"]
+      ),
+    },
+    {
+      path: "blog-create",
+      element: withRole(
+        <React.Suspense fallback={<div>Loading...</div>}>
+          <BlogPostForm />
+        </React.Suspense>,
+        ["ADMIN"]
+      ),
+    },
+    {
+      path: "blog-edit/:id",
+      element: withRole(
+        <React.Suspense fallback={<div>Loading...</div>}>
+          <BlogPostForm editMode={true} />
+        </React.Suspense>,
+        ["ADMIN"]
+      ),
+    },
+    {
+      path: "blog-preview/:id",
+      element: withRole(
+        <React.Suspense fallback={<div>Loading...</div>}>
+          <BlogPostPreview />
+        </React.Suspense>,
+        ["ADMIN"]
+      ),
     },
   ],
 };

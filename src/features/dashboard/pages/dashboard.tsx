@@ -24,10 +24,8 @@ import {
   TruckOutlined,
   RiseOutlined,
   EyeOutlined,
-
   ReloadOutlined,
 } from "@ant-design/icons";
-import { NotificationDemo } from "../../../components/NotificationDemo";
 import { useAuthStore } from "../../../stores/auth_store";
 import { useDashboardStats, useRecentActivities } from "../hooks/useDashboard";
 import { DashboardCharts } from "../components/DashboardCharts";
@@ -93,9 +91,6 @@ const Dashboard = () => {
     >
       {auth.loggedInUser ? (
         <div>
-          {/* Notification Demo */}
-          <NotificationDemo />
-
           {/* Welcome Header */}
           <Card style={{ marginBottom: "24px" }}>
             <Row align="middle" justify="space-between">
