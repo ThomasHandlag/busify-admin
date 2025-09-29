@@ -8,6 +8,7 @@ import {
   Button,
   Spin,
   Badge,
+  Tooltip,
 } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -19,12 +20,16 @@ interface DashboardSidebarProps {
   chatSessions: ChatSession[];
   chatLoading: boolean;
   chatError: string | null;
+  newlyAssignedChatIds?: Set<string>; // ID của các cuộc trò chuyện mới được assign
+  onChatSelect?: (chatId: string) => void; // Hàm xử lý khi chọn chat
 }
 
 export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   chatSessions,
   chatLoading,
   chatError,
+  newlyAssignedChatIds = new Set(),
+  onChatSelect,
 }) => {
   const navigate = useNavigate();
   const { isConnected } = useWebSocket();
@@ -33,8 +38,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const recentSessions = chatSessions.slice(0, 3);
 
   const handleReply = (chatId: string) => {
-    // Navigate to the chat page with the selected chat ID
-    navigate(`/customer-service/chat?chatId=${chatId}`);
+    // Gọi callback nếu có, nếu không thì xử lý mặc định
+    if (onChatSelect) {
+      onChatSelect(chatId);
+    } else {
+      // Navigate to the chat page with the selected chat ID
+      navigate(`/customer-service/chat?chatId=${chatId}`);
+    }
   };
 
   return (
@@ -122,9 +132,26 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                           {item.customerName}
                         </Typography.Text>
                       </div>
-                      {(item.unreadCount ?? 0) > 0 && (
-                        <Badge count={item.unreadCount} size="small" />
-                      )}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {newlyAssignedChatIds.has(item.id) && (
+                          <Tooltip title="Cuộc trò chuyện mới được giao">
+                            <Badge
+                              dot
+                              color="#1890ff"
+                              style={{ marginRight: 4 }}
+                            />
+                          </Tooltip>
+                        )}
+                        {(item.unreadCount ?? 0) > 0 && (
+                          <Badge count={item.unreadCount} size="small" />
+                        )}
+                      </div>
                     </div>
                   }
                   description={

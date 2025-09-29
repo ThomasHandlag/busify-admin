@@ -10,6 +10,7 @@ interface ChatListProps {
   searchText: string;
   onSearchChange: (value: string) => void;
   onChatSelect: (chat: ChatSession) => void;
+  newlyAssignedChatIds?: Set<string>; // IDs of newly assigned chats
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -18,6 +19,7 @@ export const ChatList: React.FC<ChatListProps> = ({
   searchText,
   onSearchChange,
   onChatSelect,
+  newlyAssignedChatIds = new Set(),
 }) => {
   const q = searchText.trim().toLowerCase();
   const filteredChats = chatSessions.filter((chat) => {
@@ -95,6 +97,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                 chat={chat}
                 isSelected={isSelected}
                 onSelect={onChatSelect}
+                isNewlyAssigned={newlyAssignedChatIds.has(chat.id)}
               />
             );
           })

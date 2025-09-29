@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar, Typography, Badge } from "antd";
+import { Avatar, Typography, Badge, Tooltip } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { ChatSession } from "../../../app/api/chat";
@@ -8,12 +8,14 @@ interface ChatItemProps {
   chat: ChatSession;
   isSelected: boolean;
   onSelect: (chat: ChatSession) => void;
+  isNewlyAssigned?: boolean; // Flag for newly assigned chats
 }
 
 export const ChatItem: React.FC<ChatItemProps> = ({
   chat,
   isSelected,
   onSelect,
+  isNewlyAssigned = false,
 }) => {
   return (
     <div
@@ -64,6 +66,11 @@ export const ChatItem: React.FC<ChatItemProps> = ({
               </Typography.Text>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {isNewlyAssigned && (
+                <Tooltip title="Cuộc trò chuyện mới được giao">
+                  <Badge dot color="#1890ff" style={{ marginRight: 4 }} />
+                </Tooltip>
+              )}
               {(chat.unreadCount ?? 0) > 0 && (
                 <Badge count={chat.unreadCount ?? 0} size="small" />
               )}

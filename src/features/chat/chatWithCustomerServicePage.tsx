@@ -30,6 +30,17 @@ export const ChatWithCustomerServicePage = () => {
   const [searchText, setSearchText] = useState("");
   const [selectedChat, setSelectedChat] = useState<ChatSession | null>(null);
   const [messageText, setMessageText] = useState("");
+  // Sử dụng React Query để lấy danh sách các cuộc trò chuyện mới được assign
+  const { data: newlyAssignedChatIds = new Set<string>() } = useQuery({
+    queryKey: ["newlyAssignedChats"],
+    // Mặc định là set rỗng nếu chưa có dữ liệu
+    initialData: new Set<string>(),
+    // Không cần fetcher vì không gọi API
+    queryFn: () => Promise.resolve(new Set<string>()),
+    // Cache vĩnh viễn cho đến khi được cập nhật
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch chat sessions using React Query
@@ -95,6 +106,19 @@ export const ChatWithCustomerServicePage = () => {
     (chat: ChatSession) => {
       setSelectedChat(chat);
 
+      // Remove from newly assigned chats when selected using React Query
+      queryClient.setQueryData<Set<string>>(
+        ["newlyAssignedChats"],
+        (oldSet = new Set<string>()) => {
+          if (oldSet.has(chat.id)) {
+            const updated = new Set(oldSet);
+            updated.delete(chat.id);
+            return updated;
+          }
+          return oldSet;
+        }
+      );
+
       // Mark as read locally by resetting unread count
       queryClient.setQueryData<ChatSession[]>(
         ["chatSessions"],
@@ -145,6 +169,18 @@ export const ChatWithCustomerServicePage = () => {
     (notification: ChatNotification) => {
       console.log("Received notification:", notification);
 
+      // Add to newly assigned chats if it's a SYSTEM_ASSIGN notification using React Query
+      if (notification.type === "SYSTEM_ASSIGN") {
+        queryClient.setQueryData<Set<string>>(
+          ["newlyAssignedChats"],
+          (oldSet = new Set<string>()) => {
+            const updated = new Set(oldSet);
+            updated.add(notification.roomId);
+            return updated;
+          }
+        );
+      }
+
       queryClient.setQueryData<ChatSession[]>(
         ["chatSessions"],
         (oldSessions = []) => {
@@ -152,8 +188,15 @@ export const ChatWithCustomerServicePage = () => {
             (chat) => chat.id === notification.roomId
           );
 
+          // If the session doesn't exist and it's a new assignment,
+          // invalidate the query to refetch the entire list.
+          if (!sessionExists && notification.type === "SYSTEM_ASSIGN") {
+            queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
+            return oldSessions; // Return old data until refetch is complete
+          }
+
+          // If the session exists, update it locally.
           if (sessionExists) {
-            // Cập nhật session đã có
             return oldSessions.map((chat) =>
               chat.id === notification.roomId
                 ? {
@@ -167,11 +210,12 @@ export const ChatWithCustomerServicePage = () => {
                   }
                 : chat
             );
-          } else {
-            // Nếu session chưa có, làm mới toàn bộ danh sách để lấy session mới
-            queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
-            return oldSessions;
           }
+
+          // For other notification types where the session doesn't exist,
+          // you might still want to invalidate, depending on the desired behavior.
+          // For now, we only explicitly handle SYSTEM_ASSIGN for new sessions.
+          return oldSessions;
         }
       );
     },
@@ -313,6 +357,7 @@ export const ChatWithCustomerServicePage = () => {
               searchText={searchText}
               onSearchChange={setSearchText}
               onChatSelect={handleChatSelect}
+              newlyAssignedChatIds={newlyAssignedChatIds}
             />
           </Col>
 

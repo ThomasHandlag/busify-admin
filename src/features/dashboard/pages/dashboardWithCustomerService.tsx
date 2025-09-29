@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Col, Row, message, Spin, Button, Form } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { MetricsCard } from "../components/MetricsCard";
 import { TicketsList } from "../components/TicketsList";
 import { DashboardSidebar } from "../components/DashboardSidebar";
@@ -23,6 +24,7 @@ import type { ChatNotification } from "../../../app/service/WebSocketService";
 
 export const DashboardWithCustomerService = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchText, setSearchText] = useState<string>("");
@@ -118,6 +120,18 @@ export const DashboardWithCustomerService = () => {
   // --- Tích hợp React Query cho Chat ---
   const { addNotificationHandler, removeNotificationHandler } = useWebSocket();
 
+  // Sử dụng React Query để lấy danh sách các cuộc trò chuyện mới được assign
+  const { data: newlyAssignedChatIds = new Set<string>() } = useQuery({
+    queryKey: ["newlyAssignedChats"],
+    // Mặc định là set rỗng nếu chưa có dữ liệu
+    initialData: new Set<string>(),
+    // Không cần fetcher vì không gọi API
+    queryFn: () => Promise.resolve(new Set<string>()),
+    // Cache vĩnh viễn cho đến khi được cập nhật
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
   const {
     data: allChatSessions = [],
     isLoading: chatLoading,
@@ -132,6 +146,19 @@ export const DashboardWithCustomerService = () => {
 
   const handleChatNotification = useCallback(
     (notification: ChatNotification) => {
+      // Thêm vào danh sách chat mới được gán nếu là thông báo SYSTEM_ASSIGN
+      if (notification.type === "SYSTEM_ASSIGN") {
+        // Cập nhật danh sách chat mới được gán thông qua React Query
+        queryClient.setQueryData<Set<string>>(
+          ["newlyAssignedChats"],
+          (oldSet = new Set<string>()) => {
+            const updated = new Set(oldSet);
+            updated.add(notification.roomId);
+            return updated;
+          }
+        );
+      }
+
       queryClient.setQueryData<ChatSession[]>(
         ["chatSessions"],
         (oldSessions = []) => {
@@ -225,6 +252,25 @@ export const DashboardWithCustomerService = () => {
     queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
   };
 
+  // Xử lý khi người dùng chọn chat để trả lời
+  const handleChatSelect = (chatId: string) => {
+    // Xóa khỏi danh sách chat mới được gán sử dụng React Query
+    queryClient.setQueryData<Set<string>>(
+      ["newlyAssignedChats"],
+      (oldSet = new Set<string>()) => {
+        if (oldSet.has(chatId)) {
+          const updated = new Set(oldSet);
+          updated.delete(chatId);
+          return updated;
+        }
+        return oldSet;
+      }
+    );
+
+    // Chuyển đến trang chat
+    navigate(`/customer-service/chat?chatId=${chatId}`);
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -307,6 +353,8 @@ export const DashboardWithCustomerService = () => {
             chatSessions={allChatSessions} // Truyền toàn bộ danh sách
             chatLoading={chatLoading}
             chatError={isChatError ? chatError.message : null}
+            newlyAssignedChatIds={newlyAssignedChatIds}
+            onChatSelect={handleChatSelect}
           />
         </Col>
       </Row>
